@@ -1,0 +1,80 @@
+{
+  "id": "admin_studio_v1",
+  "version": 1,
+  "is_published": true,
+  "layout": {
+    "type": "div",
+    "className": "min-h-screen bg-slate-100 text-slate-900 p-8",
+    "children": [
+      {
+        "type": "header",
+        "className": "flex justify-between items-center mb-8 border-b border-slate-300 pb-4",
+        "children": [
+          {
+            "type": "h1",
+            "className": "text-3xl font-bold text-slate-800",
+            "props": { "text": "Experience Studio" }
+          },
+          {
+            "type": "span",
+            "className": "text-slate-500",
+            "props": { "text": "Wire-Agent Command Center" }
+          }
+        ]
+      },
+      {
+        "type": "main",
+        "className": "grid grid-cols-2 gap-8",
+        "children": [
+          {
+            "type": "section",
+            "className": "bg-white p-6 rounded-lg shadow",
+            "children": [
+              {
+                "type": "h2",
+                "className": "text-xl font-semibold mb-4 text-indigo-600",
+                "props": { "text": "Live UI Components" }
+              },
+              {
+                "type": "p",
+                "className": "text-slate-600 mb-4",
+                "props": { "text": "Select a component to inspect its schema." }
+              },
+              {
+                "type": "button",
+                "className": "bg-indigo-100 text-indigo-700 hover:bg-indigo-200 font-semibold py-2 px-4 rounded block w-full mb-2",
+                "props": { "text": "Terms & Conditions Panel" }
+              },
+              {
+                "type": "button",
+                "className": "bg-indigo-100 text-indigo-700 hover:bg-indigo-200 font-semibold py-2 px-4 rounded block w-full",
+                "props": { "text": "User Agent Panel" }
+              }
+            ]
+          },
+          {
+            "type": "section",
+            "className": "bg-white p-6 rounded-lg shadow",
+            "children": [
+              {
+                "type": "h2",
+                "className": "text-xl font-semibold mb-4 text-purple-600",
+                "props": { "text": "Wire-Agent Terminal" }
+              },
+              {
+                "type": "p",
+                "className": "text-slate-500 text-sm mb-4 font-mono",
+                "props": { "text": "> Prompt Wire-Agent to mutate the schema..." }
+              },
+              {
+                "type": "button",
+                "className": "w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 px-4 rounded",
+                "props": { "text": "Execute 'Make T&C red'" }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

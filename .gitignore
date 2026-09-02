@@ -216,3 +216,11 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Environment & Dependencies
+.env
+.env.*
+node_modules/
+dist/
+build/
+*.db

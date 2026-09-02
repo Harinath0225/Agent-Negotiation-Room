@@ -1,0 +1,99 @@
+/* Modern Nexus Deal Room Visual System & Layout Styles */
+
+:root {
+  --deal-bg-dark: #020617; /* slate-950 */
+  --deal-card-bg: rgba(15, 23, 42, 0.85); /* slate-900 with alpha */
+  --deal-border: rgba(30, 41, 59, 0.9); /* slate-800 */
+  --deal-accent-sky: #0ea5e9;
+  --deal-accent-emerald: #10b981;
+  --deal-accent-amber: #f59e0b;
+  --deal-accent-rose: #f43f5e;
+}
+
+/* App root container ensures no horizontal page spill */
+.app-root {
+  min-height: 100vh;
+  width: 100%;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+/* Custom Sleek Scrollbars for Timeline */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.6);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(51, 65, 85, 0.8);
+  border-radius: 9999px;
+  transition: background 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.9);
+}
+
+/* Stable dimensions for interactive controls to prevent layout shift */
+#simulate-tradeoff-btn {
+  min-height: 48px;
+  touch-action: manipulation;
+}
+
+#retry-simulation-btn {
+  min-height: 32px;
+  touch-action: manipulation;
+}
+
+/* Workflow diagram node interactions */
+[id^="workflow-stage-"] {
+  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+  outline: none;
+}
+
+[id^="workflow-stage-"]:focus-visible {
+  ring: 2px solid var(--deal-accent-sky);
+}
+
+/* Subtle glow animations */
+@keyframes stage-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(14, 165, 233, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 16px 2px rgba(14, 165, 233, 0.25);
+  }
+}
+
+.stage-active-pulse {
+  animation: stage-pulse 2s infinite ease-in-out;
+}
+
+/* Micro-transitions for smooth state flips */
+.fade-enter {
+  opacity: 0;
+  transform: translateY(4px);
+}
+
+.fade-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 200ms ease, transform 200ms ease;
+}
+
+/* Responsive grid guarantees on small screens */
+@media (max-width: 640px) {
+  header h1 {
+    font-size: 1.35rem;
+    line-height: 1.75rem;
+  }
+
+  .grid {
+    gap: 1rem;
+  }
+}
