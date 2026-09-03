@@ -1,19 +1,16 @@
 import os
 import json
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
-from fastapi.staticfiles import StaticFiles
 
 from src.models.db import engine, Base, SessionLocal
 from src.models.schema import DealRecord, UISchema
 from src.api.schema_routes import router as schema_router
 from src.api.simulation_routes import router as simulation_router
 from src.api.contract_routes import router as contract_router
-from src.api.mcp_proxy_routes import router as mcp_proxy_router, get_manifest
+from src.api.mcp_proxy_routes import router as mcp_proxy_router
 from src.mcp.server import mcp_server
-
 
 def seed_database():
     """Seed initial UI schemas from seed files or update when a newer seed version exists."""
@@ -62,16 +59,16 @@ def seed_database():
                     db.add(admin_schema)
 
         sample_deals = [
-            DealRecord(id="deal_1042", contract_id="1042-B", title="Enterprise Cloud Migration Service Agreement", counterparty="Apex Global Enterprise", status="Under Negotiation", annual_value=120000, liability_cap="2.0x", notes=[{"id": "n1", "author": "WebMCP Agent", "note": "Initial negotiation session opened.", "timestamp": "2026-09-03T09:30:00Z"}], updated_at="2026-09-03T09:30:00Z"),
-            DealRecord(id="deal_0987", contract_id="0987-A", title="Managed Security Operations Agreement", counterparty="Northstar Financial", status="Approved", annual_value=280000, liability_cap="1.5x", notes=[], updated_at="2026-08-28T14:15:00Z"),
-            DealRecord(id="deal_0764", contract_id="0764-C", title="Data Platform Modernization SOW", counterparty="Cobalt Logistics", status="Closed", annual_value=185000, liability_cap="2.0x", notes=[], updated_at="2026-08-11T16:45:00Z"),
-            DealRecord(id="deal_0521", contract_id="0521-D", title="Customer Analytics Subscription", counterparty="Meridian Health", status="Rejected", annual_value=96000, liability_cap="1.0x", notes=[], updated_at="2026-07-29T11:20:00Z"),
-            DealRecord(id="deal_1120", contract_id="1120-E", title="Global AI Infrastructure Licensing Agreement", counterparty="Aether Dynamics", status="Approved", annual_value=450000, liability_cap="2.5x", notes=[], updated_at="2026-09-01T10:00:00Z"),
-            DealRecord(id="deal_1088", contract_id="1088-F", title="Autonomous Workflow Integration SOW", counterparty="Vanguard Retail Systems", status="Under Negotiation", annual_value=75000, liability_cap="1.5x", notes=[], updated_at="2026-09-02T16:20:00Z"),
-            DealRecord(id="deal_0944", contract_id="0944-G", title="Cyber Defense Zero-Trust Retainer", counterparty="Starlight Capital", status="Closed", annual_value=310000, liability_cap="2.0x", notes=[], updated_at="2026-08-19T11:00:00Z"),
-            DealRecord(id="deal_0832", contract_id="0832-H", title="Multi-Tenant Data Warehouse License", counterparty="Syntropy BioTech", status="Rejected", annual_value=140000, liability_cap="0.8x", notes=[], updated_at="2026-08-04T15:30:00Z"),
-            DealRecord(id="deal_1205", contract_id="1205-K", title="Enterprise ERP Microservices Migration", counterparty="Pinnacle Energy Corp", status="Under Negotiation", annual_value=520000, liability_cap="1.5x", notes=[], updated_at="2026-09-03T08:00:00Z"),
-            DealRecord(id="deal_0690", contract_id="0690-M", title="SaaS Telemetry & Observability Pipeline", counterparty="Zenith Media Networks", status="Approved", annual_value=65000, liability_cap="1.0x", notes=[], updated_at="2026-07-15T09:45:00Z"),
+            DealRecord(id="deal_1042", contract_id="1042-B", title="Enterprise Cloud Migration Service Agreement", counterparty="Apex Global Enterprise", status="Under Negotiation", annual_value=120000, liability_cap="2.0x", updated_at="2026-09-03T09:30:00Z"),
+            DealRecord(id="deal_0987", contract_id="0987-A", title="Managed Security Operations Agreement", counterparty="Northstar Financial", status="Approved", annual_value=280000, liability_cap="1.5x", updated_at="2026-08-28T14:15:00Z"),
+            DealRecord(id="deal_0764", contract_id="0764-C", title="Data Platform Modernization SOW", counterparty="Cobalt Logistics", status="Closed", annual_value=185000, liability_cap="2.0x", updated_at="2026-08-11T16:45:00Z"),
+            DealRecord(id="deal_0521", contract_id="0521-D", title="Customer Analytics Subscription", counterparty="Meridian Health", status="Rejected", annual_value=96000, liability_cap="1.0x", updated_at="2026-07-29T11:20:00Z"),
+            DealRecord(id="deal_1120", contract_id="1120-E", title="Global AI Infrastructure Licensing Agreement", counterparty="Aether Dynamics", status="Approved", annual_value=450000, liability_cap="2.5x", updated_at="2026-09-01T10:00:00Z"),
+            DealRecord(id="deal_1088", contract_id="1088-F", title="Autonomous Workflow Integration SOW", counterparty="Vanguard Retail Systems", status="Under Negotiation", annual_value=75000, liability_cap="1.5x", updated_at="2026-09-02T16:20:00Z"),
+            DealRecord(id="deal_0944", contract_id="0944-G", title="Cyber Defense Zero-Trust Retainer", counterparty="Starlight Capital", status="Closed", annual_value=310000, liability_cap="2.0x", updated_at="2026-08-19T11:00:00Z"),
+            DealRecord(id="deal_0832", contract_id="0832-H", title="Multi-Tenant Data Warehouse License", counterparty="Syntropy BioTech", status="Rejected", annual_value=140000, liability_cap="0.8x", updated_at="2026-08-04T15:30:00Z"),
+            DealRecord(id="deal_1205", contract_id="1205-K", title="Enterprise ERP Microservices Migration", counterparty="Pinnacle Energy Corp", status="Under Negotiation", annual_value=520000, liability_cap="1.5x", updated_at="2026-09-03T08:00:00Z"),
+            DealRecord(id="deal_0690", contract_id="0690-M", title="SaaS Telemetry & Observability Pipeline", counterparty="Zenith Media Networks", status="Approved", annual_value=65000, liability_cap="1.0x", updated_at="2026-07-15T09:45:00Z"),
         ]
         for deal in sample_deals:
             if not db.query(DealRecord).filter(DealRecord.contract_id == deal.contract_id).first():
@@ -81,12 +78,10 @@ def seed_database():
     finally:
         db.close()
 
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     seed_database()
     yield
-
 
 app = FastAPI(
     title="Nexus Deal Room Backend",
@@ -112,7 +107,6 @@ app.include_router(mcp_proxy_router, prefix="/api")
 # Mount Model Context Protocol (WebMCP) SSE server
 app.mount("/api/mcp", mcp_server.sse_app())
 
-
 @app.get("/health")
 async def health_check():
     return {"status": "ok"}
@@ -120,10 +114,15 @@ async def health_check():
 
 @app.get("/.well-known/webmcp.json")
 async def webmcp_well_known():
+    from .api.mcp_proxy_routes import get_manifest
     return get_manifest()
 
 
 # Serve production frontend if built and present (for Cloud Run container)
+from fastapi import HTTPException
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+
 candidate_paths = [
     os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "static"),
     os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "static"),
