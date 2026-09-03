@@ -5,12 +5,15 @@
 
 # --- Stage 1: Build Frontend Assets ---
 FROM node:20-slim AS frontend-builder
+WORKDIR /app
+
+COPY frontend/package*.json ./frontend/
+RUN cd frontend && npm install
+
+COPY frontend/ ./frontend/
+COPY backend/src/seeds/ ./backend/src/seeds/
+
 WORKDIR /app/frontend
-
-COPY frontend/package*.json ./
-RUN npm install
-
-COPY frontend/ ./
 RUN npm run build
 
 # --- Stage 2: Python Backend Runtime ---

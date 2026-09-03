@@ -1,0 +1,449 @@
+{
+  "id": "deal_room_v1",
+  "version": 2,
+  "is_published": true,
+  "data": {
+    "deal": {
+      "id": "deal_1042",
+      "contract_id": "1042-B",
+      "current_price": 120000,
+      "current_terms": {
+        "liability": 2.0,
+        "payment_terms": "Net 30",
+        "delivery_timeline": 90
+      },
+      "targets": {
+        "liability": 1.5,
+        "payment_terms": "Net 30",
+        "delivery_timeline": 90
+      },
+      "counterparty": "Apex Global Enterprise",
+      "approval_state": "draft",
+      "created_at": "2026-09-02T00:00:00Z",
+      "updated_at": "2026-09-02T00:00:00Z"
+    },
+    "constraints": [
+      {
+        "id": "constraint_liability",
+        "deal_id": "deal_1042",
+        "name": "Liability Coverage",
+        "term": "liability",
+        "operator": ">=",
+        "target": 1.5,
+        "hard_limit": 1.5,
+        "penalty_weight": 100.0,
+        "severity": "hard",
+        "message": "Liability cap must be at least 1.5x annual contract value"
+      },
+      {
+        "id": "constraint_payment_terms",
+        "deal_id": "deal_1042",
+        "name": "Payment Terms",
+        "term": "payment_terms",
+        "operator": "==",
+        "target": 30,
+        "hard_limit": null,
+        "penalty_weight": 5.0,
+        "severity": "advisory",
+        "message": "Net 30 is standard; other terms impact cash flow"
+      }
+    ],
+    "alternatives": [
+      {
+        "id": "alt_current",
+        "label": "Current Deal",
+        "deal_id": "deal_1042",
+        "price": 120000,
+        "terms": {
+          "liability": 2.0,
+          "payment_terms": "Net 30",
+          "delivery_timeline": 90
+        },
+        "source": "system",
+        "created_at": "2026-09-02T00:00:00Z"
+      },
+      {
+        "id": "alt_restrictive",
+        "label": "Restrictive Seller Offer",
+        "deal_id": "deal_1042",
+        "price": 95000,
+        "terms": {
+          "liability": 0.8,
+          "payment_terms": "Net 30",
+          "delivery_timeline": 90
+        },
+        "source": "counterparty",
+        "created_at": "2026-09-02T00:00:00Z"
+      },
+      {
+        "id": "alt_counter_a",
+        "label": "Counter Proposal A",
+        "deal_id": "deal_1042",
+        "price": 105000,
+        "terms": {
+          "liability": 1.5,
+          "payment_terms": "Net 30",
+          "delivery_timeline": 90
+        },
+        "source": "agent_strategic",
+        "created_at": "2026-09-02T00:00:00Z"
+      },
+      {
+        "id": "alt_counter_b",
+        "label": "Counter Proposal B",
+        "deal_id": "deal_1042",
+        "price": 110000,
+        "terms": {
+          "liability": 1.8,
+          "payment_terms": "Net 30",
+          "delivery_timeline": 90
+        },
+        "source": "agent_strategic",
+        "created_at": "2026-09-02T00:00:00Z"
+      }
+    ]
+  },
+  "layout": {
+    "type": "div",
+    "className": "min-h-screen bg-slate-950 text-slate-100 font-sans p-4 sm:p-6 lg:p-8 selection:bg-sky-500 selection:text-white",
+    "children": [
+      {
+        "type": "header",
+        "className": "max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center sm:justify-between pb-6 mb-8 border-b border-slate-800 gap-4",
+        "children": [
+          {
+            "type": "div",
+            "className": "space-y-1",
+            "children": [
+              {
+                "type": "div",
+                "className": "flex items-center space-x-3",
+                "children": [
+                  {
+                    "type": "span",
+                    "className": "px-2.5 py-0.5 rounded-full text-xs font-semibold tracking-wide bg-sky-500/10 text-sky-400 border border-sky-500/20 uppercase",
+                    "props": { "text": "Agent-Native Decision Environment" }
+                  },
+                  {
+                    "type": "span",
+                    "className": "px-2.5 py-0.5 rounded-full text-xs font-semibold tracking-wide bg-emerald-500/10 text-emerald-400 border border-emerald-500/20",
+                    "props": { "text": "Contract #1042-B" }
+                  }
+                ]
+              },
+              {
+                "type": "h1",
+                "className": "text-2xl sm:text-3xl font-bold tracking-tight text-white",
+                "props": { "text": "Enterprise Cloud Migration Service Agreement" }
+              },
+              {
+                "type": "p",
+                "className": "text-sm text-slate-400",
+                "props": { "text": "Counterparty: Apex Global Enterprise • Primary Negotiator: Strategic Partner Division" }
+              }
+            ]
+          },
+          {
+            "type": "div",
+            "className": "flex flex-wrap items-center gap-2 self-start sm:self-auto",
+            "children": [
+              {
+                "type": "div",
+                "className": "flex items-center space-x-2 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-lg shadow-sm text-xs font-medium text-slate-300",
+                "children": [
+                  {
+                    "type": "span",
+                    "className": "h-2 w-2 rounded-full bg-emerald-500 animate-pulse"
+                  },
+                  {
+                    "type": "span",
+                    "props": { "text": "Decision Twin: Deterministic Online" }
+                  }
+                ]
+              },
+              {
+                "type": "div",
+                "className": "flex items-center space-x-2 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-lg shadow-sm text-xs font-medium text-sky-300",
+                "children": [
+                  {
+                    "type": "span",
+                    "className": "h-2 w-2 rounded-full bg-sky-400"
+                  },
+                  {
+                    "type": "span",
+                    "props": { "text": "WebMCP: document.modelContext Ready" }
+                  }
+                ]
+              },
+              {
+                "type": "div",
+                "className": "flex items-center space-x-2 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-lg shadow-sm text-xs font-medium text-amber-300",
+                "children": [
+                  {
+                    "type": "span",
+                    "className": "h-2 w-2 rounded-full bg-amber-400"
+                  },
+                  {
+                    "type": "span",
+                    "props": { "text": "Human Authority: Enforced" }
+                  }
+                ]
+              },
+              {
+                "type": "a",
+                "className": "px-3 py-1.5 rounded-lg text-xs font-medium border border-slate-700 bg-slate-900 text-slate-300 hover:text-white hover:border-slate-500 transition shadow-sm",
+                "props": { "href": "/contracts", "text": "Contracts SoR" }
+              },
+              {
+                "type": "a",
+                "className": "px-3 py-1.5 rounded-lg text-xs font-semibold border border-purple-500/40 bg-purple-950/40 text-purple-300 hover:bg-purple-900/60 hover:text-white transition shadow-sm",
+                "props": { "href": "/agent-qa", "text": "🧪 Agent QA" }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "main",
+        "className": "max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6",
+        "children": [
+          {
+            "type": "section",
+            "className": "min-w-0 lg:col-span-7 space-y-6",
+            "children": [
+              {
+                "type": "constraint-kitchen",
+                "props": {
+                  "title": "Constraint Kitchen (Human Intent Compiler)"
+                }
+              },
+              {
+                "type": "div",
+                "className": "bg-slate-900/90 border border-slate-800 rounded-xl p-6 shadow-xl backdrop-blur-sm",
+                "children": [
+                  {
+                    "type": "div",
+                    "className": "flex items-center justify-between pb-4 border-b border-slate-800/80 mb-5",
+                    "children": [
+                      {
+                        "type": "h2",
+                        "className": "text-lg font-semibold text-white flex items-center space-x-2",
+                        "props": { "text": "Active Contract Terms" }
+                      },
+                      {
+                        "type": "span",
+                        "className": "text-xs font-mono px-2 py-1 rounded bg-slate-800 text-slate-300 border border-slate-700",
+                        "props": { "text": "Status: Under Negotiation" }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "div",
+                    "className": "grid grid-cols-1 sm:grid-cols-2 gap-4",
+                    "children": [
+                      {
+                        "type": "div",
+                        "className": "p-4 rounded-lg bg-slate-950/60 border border-slate-800/80",
+                        "children": [
+                          {
+                            "type": "span",
+                            "className": "text-xs font-medium text-slate-400 uppercase tracking-wider block mb-1",
+                            "props": { "text": "Base Contract Price" }
+                          },
+                          {
+                            "type": "span",
+                            "className": "text-2xl font-bold text-emerald-400 font-mono block",
+                            "props": { "text": "$120,000" }
+                          },
+                          {
+                            "type": "span",
+                            "className": "text-xs text-slate-500 mt-1 block",
+                            "props": { "text": "Annual recurring service commitment" }
+                          }
+                        ]
+                      },
+                      {
+                        "type": "div",
+                        "className": "p-4 rounded-lg bg-slate-950/60 border border-slate-800/80",
+                        "children": [
+                          {
+                            "type": "span",
+                            "className": "text-xs font-medium text-slate-400 uppercase tracking-wider block mb-1",
+                            "props": { "text": "Liability Cap" }
+                          },
+                          {
+                            "type": "span",
+                            "className": "text-2xl font-bold text-sky-400 font-mono block",
+                            "props": { "text": "2x Value" }
+                          },
+                          {
+                            "type": "span",
+                            "className": "text-xs text-slate-500 mt-1 block",
+                            "props": { "text": "Standard uncapped indemnity excluded" }
+                          }
+                        ]
+                      },
+                      {
+                        "type": "div",
+                        "className": "p-4 rounded-lg bg-slate-950/60 border border-slate-800/80",
+                        "children": [
+                          {
+                            "type": "span",
+                            "className": "text-xs font-medium text-slate-400 uppercase tracking-wider block mb-1",
+                            "props": { "text": "Payment Schedule" }
+                          },
+                          {
+                            "type": "span",
+                            "className": "text-base font-semibold text-slate-200 block",
+                            "props": { "text": "Net 30 Days" }
+                          },
+                          {
+                            "type": "span",
+                            "className": "text-xs text-slate-500 mt-1 block",
+                            "props": { "text": "Quarterly milestone billing" }
+                          }
+                        ]
+                      },
+                      {
+                        "type": "div",
+                        "className": "p-4 rounded-lg bg-slate-950/60 border border-slate-800/80",
+                        "children": [
+                          {
+                            "type": "span",
+                            "className": "text-xs font-medium text-slate-400 uppercase tracking-wider block mb-1",
+                            "props": { "text": "Delivery Timeline" }
+                          },
+                          {
+                            "type": "span",
+                            "className": "text-base font-semibold text-slate-200 block",
+                            "props": { "text": "90 Calendar Days" }
+                          },
+                          {
+                            "type": "span",
+                            "className": "text-xs text-slate-500 mt-1 block",
+                            "props": { "text": "Subject to Phase 1 acceptance" }
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "term-table",
+                "props": {
+                  "title": "Contract Material Terms & Governing Constraints"
+                }
+              },
+              {
+                "type": "deal-comparison",
+                "props": {
+                  "title": "Decision Alternative Comparison (Current Deal vs. Strategic Counters)"
+                }
+              },
+              {
+                "type": "div",
+                "className": "bg-slate-900/90 border border-slate-800 rounded-xl p-6 shadow-xl backdrop-blur-sm space-y-4",
+                "children": [
+                  {
+                    "type": "div",
+                    "className": "flex items-center justify-between pb-3 border-b border-slate-800",
+                    "children": [
+                      {
+                        "type": "h2",
+                        "className": "text-lg font-semibold text-white",
+                        "props": { "text": "Negotiation Co-Pilot & Tradeoff Action" }
+                      },
+                      {
+                        "type": "span",
+                        "className": "text-xs text-slate-400",
+                        "props": { "text": "Powered by Microsoft Agentic AI & WebMCP" }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "p",
+                    "className": "text-sm text-slate-300 leading-relaxed",
+                    "props": {
+                      "text": "Simulate tactical counter-proposals before presenting them to the counterparty. The Decision Twin evaluates market elasticity, risk exposure, and probability of acceptance."
+                    }
+                  },
+                  {
+                    "type": "offer-details-form",
+                    "props": {
+                      "contract_id": "1042-B",
+                      "current_price": 120000,
+                      "proposed_price": 100000,
+                      "liability": 1.5,
+                      "payment_terms": "Net 30",
+                      "delivery_timeline": 90,
+                      "action": "simulateTradeoff"
+                    }
+                  }
+                ]
+              },
+              {
+                "type": "simulation-result",
+                "props": {
+                  "title": "Decision Twin Simulation Outcome"
+                }
+              },
+              {
+                "type": "hard-constraint-result",
+                "props": {
+                  "title": "Decision Twin Constraint Guard"
+                }
+              },
+              {
+                "type": "next-best-move",
+                "props": {
+                  "title": "Strategic Recommendation: Next Best Move"
+                }
+              },
+              {
+                "type": "proposal-approval",
+                "props": {
+                  "title": "Counteroffer Proposal Approval Boundary",
+                  "proposal_id": "prop-mcp-1042",
+                  "proposed_price": 105000,
+                  "status": "pending",
+                  "counterparty": "Apex Global Enterprise"
+                }
+              }
+            ]
+          },
+          {
+            "type": "section",
+            "className": "min-w-0 lg:col-span-5 space-y-6",
+            "children": [
+              {
+                "type": "agent-workflow-dag",
+                "props": {
+                  "title": "WebMCP Agent Execution Flow (ADK/DAG)"
+                }
+              },
+              {
+                "type": "schema-mutation-panel",
+                "props": {
+                  "title": "Wire-Agent UX Evolution & Safety Guard"
+                }
+              },
+              {
+                "type": "activity-timeline",
+                "props": {
+                  "title": "Negotiation Activity Timeline (WebMCP Audit)"
+                }
+              },
+              {
+                "type": "workflow-stages",
+                "props": {
+                  "title": "5-Stage Agentic Architecture"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
