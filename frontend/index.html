@@ -5,12 +5,14 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Schema-driven autonomous negotiation deal room powered by Microsoft Agentic AI and WebMCP." />
-    <!-- WebMCP Protocol & AI Agent Discovery (ChatGPT / Claude / Browser Agent) -->
+
+    <!-- WebMCP Protocol & AI Agent Discovery (ChatGPT / Claude / Search Crawlers) -->
     <meta name="model-context-protocol" content="enabled" />
     <meta name="webmcp-enabled" content="true" />
     <meta name="webmcp-discovery" content="/.well-known/webmcp.json" />
     <link rel="model-context" type="application/json" href="/.well-known/webmcp.json" />
     <link rel="mcp-manifest" type="application/json" href="/api/mcp/manifest.json" />
+
     <script id="webmcp-manifest" type="application/json">
       {
         "@context": "https://modelcontextprotocol.io/spec",
@@ -19,6 +21,7 @@
         "jsContext": "document.modelContext"
       }
     </script>
+
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -26,6 +29,50 @@
   </head>
   <body>
     <div id="root"></div>
+
+    <!-- Machine-Readable WebMCP Surface for AI Crawlers & Scrapers (ChatGPT / Claude / Search Crawlers) -->
+    <noscript>
+      <section id="webmcp-crawler-surface" style="padding: 20px; font-family: sans-serif;">
+        <h1>Nexus Deal Room | Autonomous Negotiation Co-Pilot</h1>
+        <p>This application exposes a complete <strong>WebMCP (Web Model Context Protocol)</strong> tool surface. In browsers supporting JavaScript, tools are exposed on <code>window.document.modelContext</code>. For HTTP-based agents, tools are accessible via <code>/.well-known/webmcp.json</code> and <code>/api/mcp/tool-call</code>.</p>
+        <h2>Available WebMCP Tools</h2>
+        <ul>
+          <li><code>create_deal(company, value, stage)</code>: Create enterprise deal</li>
+          <li><code>get_deals(query, status)</code>: Search pipeline deals</li>
+          <li><code>get_deal(contract_id)</code>: Retrieve contract details and audit history</li>
+          <li><code>move_deal_stage(contract_id, stage)</code>: Move deal stage</li>
+          <li><code>add_deal_note(contract_id, note)</code>: Append note to contract</li>
+          <li><code>evaluate_offer(contract_id, offer_data)</code>: Decision Twin mathematical check</li>
+          <li><code>simulate_tradeoff(contract_id, proposed_change)</code>: Elasticity simulation</li>
+          <li><code>execute_contract(contract_id, signature_token)</code>: Human-governed signing</li>
+        </ul>
+        <p>Machine-readable JSON Manifest: <a href="/.well-known/webmcp.json">/.well-known/webmcp.json</a></p>
+      </section>
+    </noscript>
+
+    <script id="webmcp-embedded-catalog" type="application/json">
+      {
+        "protocol": "WebMCP",
+        "version": "1.0.0",
+        "manifest": "/.well-known/webmcp.json",
+        "runtimeContext": "document.modelContext",
+        "tools": [
+          "create_deal",
+          "get_deals",
+          "get_deal",
+          "move_deal_stage",
+          "add_deal_note",
+          "get_current_deal",
+          "evaluate_offer",
+          "simulate_tradeoff",
+          "propose_counteroffer",
+          "execute_contract",
+          "compile_intent",
+          "mutate_ui_schema"
+        ]
+      }
+    </script>
+
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
