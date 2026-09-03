@@ -32,6 +32,7 @@ COPY backend/ ./backend/
 
 # Copy Built Static Frontend Assets from Stage 1
 COPY --from=frontend-builder /app/frontend/dist /app/static
+COPY --from=frontend-builder /app/frontend/dist /app/backend/static
 
 # Cloud Run Configuration
 ENV PORT=8080

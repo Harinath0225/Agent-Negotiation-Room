@@ -117,18 +117,32 @@ from fastapi import HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-static_dist = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "static")
-if not os.path.exists(static_dist):
-    static_dist = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "frontend", "dist")
+candidate_paths = [
+    os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "static"),
+    os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "static"),
+    "/app/backend/static",
+    "/app/static",
+    os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "frontend", "dist"),
+]
 
-if os.path.exists(static_dist):
+static_dist = None
+for p in candidate_paths:
+    if os.path.exists(p) and os.path.isfile(os.path.join(p, "index.html")):
+        static_dist = p
+        break
+
+if static_dist:
     assets_dir = os.path.join(static_dist, "assets")
     if os.path.exists(assets_dir):
         app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
 
+    @app.get("/")
+    async def serve_index():
+        return FileResponse(os.path.join(static_dist, "index.html"))
+
     @app.get("/{full_path:path}")
     async def serve_spa(full_path: str):
-        if full_path.startswith("api") or full_path.startswith("docs") or full_path in ("openapi.json", "health"):
+        if full_path.startswith("api") or full_path.startswith("docs") or full_path in ("openapi.json", "health", "redoc"):
             raise HTTPException(status_code=404, detail="Not Found")
         file_path = os.path.join(static_dist, full_path)
         if os.path.isfile(file_path):
