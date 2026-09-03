@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useState, ReactNode } from 'react';
 
 interface PreviewContextType {
   isPreviewMode: boolean;
@@ -19,10 +19,3 @@ export const PreviewProvider: React.FC<{ children: ReactNode }> = ({ children })
   );
 };
 
-export const usePreview = () => {
-  const context = useContext(PreviewContext);
-  if (!context) {
-    throw new Error('usePreview must be used within a PreviewProvider');
-  }
-  return context;
-};

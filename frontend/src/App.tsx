@@ -8,6 +8,23 @@ import {
   DealAlternative,
 } from './store';
 import { SchemaRenderer, SchemaNode } from './renderer/SchemaRenderer';
+import ContractSearchPage from './ContractSearchPage';
+import AgentQAPage from './AgentQAPage';
+
+interface ModelContextTool {
+  name: string;
+  description: string;
+  inputSchema: Record<string, unknown>;
+  execute: (input: Record<string, unknown>) => Promise<unknown>;
+}
+
+declare global {
+  interface Document {
+    modelContext?: {
+      registerTool: (tool: ModelContextTool) => void;
+    };
+  }
+}
 
 function App() {
   const {
@@ -32,7 +49,6 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isLiveConnected, setIsLiveConnected] = useState(false);
-  const [hasBrowserWebMCP, setHasBrowserWebMCP] = useState(false);
 
   // T015: Load schema and populate deal data from seed
   const fetchSchema = useCallback(async (isInitial = false) => {
@@ -86,6 +102,8 @@ function App() {
         stage: 'decision_twin',
         status: 'completed',
         message: `Decision Twin computed risk delta (${outcome.risk_score_delta > 0 ? '+' : ''}${outcome.risk_score_delta}) and ${Math.round(outcome.acceptance_probability * 100)}% acceptance probability.`,
+        source: 'decision_twin',
+        tool_name: 'DecisionTwin.evaluate',
       });
       setStageState('decision_twin', 'completed');
 
@@ -95,6 +113,8 @@ function App() {
         stage: 'deal_room',
         status: 'completed',
         message: `Deal Room rendered tradeoff outcome for contract ${outcome.contract_id}: Proposed $${outcome.proposed_price.toLocaleString()}.`,
+        source: 'ui',
+        tool_name: 'SchemaRenderer.render_result',
       });
       setStageState('deal_room', 'completed');
     },
@@ -110,6 +130,8 @@ function App() {
         stage: 'decision_twin',
         status: 'failed',
         message: `Decision Twin evaluation failed: ${errMessage}`,
+        source: 'decision_twin',
+        tool_name: 'DecisionTwin.evaluate',
       });
       setStageState('decision_twin', 'failed');
 
@@ -118,10 +140,78 @@ function App() {
         stage: 'deal_room',
         status: 'failed',
         message: 'Deal Room displayed simulation failure state with retry option.',
+        source: 'ui',
+        tool_name: 'SchemaRenderer.render_error',
       });
       setStageState('deal_room', 'failed');
     },
     [failSimulation, addActivityEvent, setStageState]
+  );
+
+  const invokeMCPTool = useCallback(
+    async (toolName: string, toolArguments: Record<string, unknown>, requestId: string, stage: 'user_agent' | 'webmcp' | 'decision_twin' | 'deal_room') => {
+      const payloadPreview = JSON.stringify(toolArguments);
+      addActivityEvent({
+        request_id: requestId,
+        stage,
+        status: 'started',
+        message: `WebMCP calling ${toolName}.`,
+        source: 'webmcp',
+        tool_name: toolName,
+        payload_preview: payloadPreview,
+      });
+
+      try {
+        const rpcPayload = {
+          jsonrpc: '2.0',
+          method: 'tools/call',
+          params: { name: toolName, arguments: toolArguments },
+          id: requestId,
+        };
+        // Invoke FastMCP HTTP JSON-RPC proxy directly to avoid SSE session redirects & 400 Bad Request
+        const response = await fetch('/api/mcp/tool-call', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(rpcPayload),
+        });
+        if (!response.ok) {
+          throw new Error(`MCP ${toolName} failed with status ${response.status}`);
+        }
+
+        const rpcResult = await response.json();
+        if (rpcResult.error) {
+          throw new Error(rpcResult.error.message || `MCP ${toolName} returned an error`);
+        }
+
+        const content = rpcResult.result?.content;
+        const result = Array.isArray(content) && typeof content[0]?.text === 'string'
+          ? JSON.parse(content[0].text)
+          : rpcResult.result ?? rpcResult;
+        addActivityEvent({
+          request_id: requestId,
+          stage,
+          status: 'completed',
+          message: `WebMCP completed ${toolName} [HTTP 200 OK].`,
+          source: 'webmcp',
+          tool_name: toolName,
+          payload_preview: JSON.stringify(result).slice(0, 300),
+        });
+        return result as Record<string, unknown>;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        addActivityEvent({
+          request_id: requestId,
+          stage,
+          status: 'failed',
+          message: `WebMCP ${toolName} failed: ${message}`,
+          source: 'webmcp',
+          tool_name: toolName,
+          payload_preview: payloadPreview,
+        });
+        throw error;
+      }
+    },
+    [addActivityEvent]
   );
 
   const submitSimulation = useCallback(
@@ -131,71 +221,126 @@ function App() {
       const currentPrice = typeof payload?.current_price === 'number' ? payload.current_price : 120000;
       const proposedPrice = typeof payload?.proposed_price === 'number' ? payload.proposed_price : 100000;
       const priceDelta = typeof payload?.price_delta === 'number' ? payload.price_delta : -20000;
+      const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
       startSimulation(requestId, contractId);
 
-      // Stage 1: Negotiator
-      addActivityEvent({
-        request_id: requestId,
-        stage: 'negotiator',
-        status: 'started',
-        message: `Negotiator proposed price concession from $${currentPrice.toLocaleString()} to $${proposedPrice.toLocaleString()} (${priceDelta < 0 ? '-' : '+'}$${Math.abs(priceDelta).toLocaleString()}).`,
-      });
-      setStageState('negotiator', 'completed');
-
-      // Stage 2: User Agent
-      addActivityEvent({
-        request_id: requestId,
-        stage: 'user_agent',
-        status: 'started',
-        message: 'User Agent (Microsoft Agentic AI) evaluating prompt and preparing simulate_tradeoff tool call.',
-      });
-      setStageState('user_agent', 'active');
-
-      // Stage 3: WebMCP Gateway
-      addActivityEvent({
-        request_id: requestId,
-        stage: 'webmcp',
-        status: 'started',
-        message: `WebMCP Gateway routing simulate_tradeoff request for contract #${contractId}.`,
-      });
-      setStageState('user_agent', 'completed');
-      setStageState('webmcp', 'active');
-
-      // Stage 4: Decision Twin
-      setStageState('webmcp', 'completed');
-      setStageState('decision_twin', 'active');
+      // Reset all DAG nodes to idle for fresh run
+      updateDAGNodeStatus('node-discover', 'idle');
+      updateDAGNodeStatus('node-read', 'idle');
+      updateDAGNodeStatus('node-evaluate', 'idle');
+      updateDAGNodeStatus('node-reason', 'idle');
+      updateDAGNodeStatus('node-propose', 'idle');
+      updateDAGNodeStatus('node-approve', 'idle');
 
       try {
-        const response = await fetch('/api/simulations/tradeoff', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            request_id: requestId,
+        // Stage 1: Discover Tools
+        updateDAGNodeStatus('node-discover', 'active');
+        selectDAGNode('node-discover');
+        setStageState('negotiator', 'active');
+        await delay(350);
+        await invokeMCPTool('inspect_ui_schema', {}, `${requestId}-discover`, 'user_agent');
+        updateDAGNodeStatus('node-discover', 'completed');
+        setStageState('negotiator', 'completed');
+
+        // Stage 2: Read Deal State & Constraints
+        updateDAGNodeStatus('node-read', 'active');
+        selectDAGNode('node-read');
+        setStageState('user_agent', 'active');
+        await delay(350);
+        await invokeMCPTool('get_current_deal', { contract_id: contractId }, `${requestId}-deal`, 'webmcp');
+        await invokeMCPTool('get_constraints', { contract_id: contractId }, `${requestId}-constraints`, 'webmcp');
+        updateDAGNodeStatus('node-read', 'completed');
+        setStageState('user_agent', 'completed');
+
+        // Stage 3: Evaluate Offer (Decision Twin)
+        updateDAGNodeStatus('node-evaluate', 'active');
+        selectDAGNode('node-evaluate');
+        setStageState('webmcp', 'active');
+        await delay(350);
+        await invokeMCPTool(
+          'evaluate_offer',
+          {
             contract_id: contractId,
-            proposed_change: {
+            offer_data: JSON.stringify({
+              label: 'Agent Proposed Offer',
+              price: proposedPrice,
+              terms: {
+                liability: payload?.liability ?? 1.5,
+                payment_terms: payload?.payment_terms ?? 'Net 30',
+                delivery_timeline: payload?.delivery_timeline ?? 90,
+              },
+              source: 'webmcp-agent',
+            }),
+          },
+          `${requestId}-evaluate`,
+          'decision_twin'
+        );
+        updateDAGNodeStatus('node-evaluate', 'completed');
+        setStageState('webmcp', 'completed');
+
+        // Stage 4: Agent Strategy (Simulation & Reasoning)
+        updateDAGNodeStatus('node-reason', 'active');
+        selectDAGNode('node-reason');
+        setStageState('decision_twin', 'active');
+        await delay(350);
+        const data = (await invokeMCPTool(
+          'simulate_tradeoff',
+          {
+            contract_id: contractId,
+            proposed_change: JSON.stringify({
               current_price: currentPrice,
               price_delta: priceDelta,
               proposed_price: proposedPrice,
-            },
-          }),
-        });
-
-        if (!response.ok) {
-          const errData = await response.json().catch(() => ({ detail: response.statusText }));
-          const message = errData.detail || `Request failed with status ${response.status}`;
-          applySimulationFailure(requestId, message);
-          return;
-        }
-
-        const data: SimulationOutcome = await response.json();
+            }),
+          },
+          `${requestId}-simulate`,
+          'decision_twin'
+        )) as unknown as SimulationOutcome;
         applySimulationOutcome(data);
+        updateDAGNodeStatus('node-reason', 'completed');
+        setStageState('decision_twin', 'completed');
+
+        // Stage 5: Propose Counteroffer
+        updateDAGNodeStatus('node-propose', 'active');
+        selectDAGNode('node-propose');
+        setStageState('deal_room', 'active');
+        await delay(350);
+        await invokeMCPTool(
+          'propose_counteroffer',
+          {
+            contract_id: contractId,
+            proposal_data: JSON.stringify({
+              proposed_price: proposedPrice,
+              liability: payload?.liability ?? 1.5,
+              payment_terms: payload?.payment_terms ?? 'Net 30',
+              delivery_timeline: payload?.delivery_timeline ?? 90,
+              counterparty: 'Apex Global Enterprise',
+            }),
+          },
+          `${requestId}-propose`,
+          'deal_room'
+        );
+        updateDAGNodeStatus('node-propose', 'completed');
+        setStageState('deal_room', 'completed');
+
+        // Stage 6: Human Approval Boundary
+        updateDAGNodeStatus('node-approve', 'active');
+        selectDAGNode('node-approve');
+        addActivityEvent({
+          request_id: `${requestId}-awaiting-approval`,
+          stage: 'deal_room',
+          status: 'started',
+          message: `Counteroffer Proposal ($${proposedPrice.toLocaleString()}) submitted. Awaiting human approval sign-off.`,
+          source: 'webmcp',
+          tool_name: 'human_approval',
+        });
       } catch (networkErr: unknown) {
         const netMsg = networkErr instanceof Error ? networkErr.message : 'Network connection failed.';
         applySimulationFailure(requestId, netMsg);
       }
     },
-    [startSimulation, addActivityEvent, setStageState, applySimulationOutcome, applySimulationFailure]
+    [startSimulation, addActivityEvent, setStageState, invokeMCPTool, applySimulationOutcome, applySimulationFailure, updateDAGNodeStatus, selectDAGNode]
   );
 
   // Action Dispatcher for SchemaRenderer nodes
@@ -214,6 +359,8 @@ function App() {
           stage: 'negotiator',
           status: 'completed',
           message: `User approved counteroffer proposal ${proposal_id} ($105,000). Deal progressing to closure.`,
+          source: 'ui',
+          tool_name: 'human_approval.approve',
         });
       } else if (actionName === 'rejectProposal') {
         const proposal_id = (payload?.proposal_id as string) || 'prop-mcp-1042';
@@ -224,6 +371,8 @@ function App() {
           stage: 'negotiator',
           status: 'failed',
           message: `User rejected counteroffer proposal ${proposal_id}. New negotiations required.`,
+          source: 'ui',
+          tool_name: 'human_approval.reject',
         });
       } else if (actionName === 'selectAlternative') {
         const altId = payload?.alternative_id as string;
@@ -232,32 +381,84 @@ function App() {
         const nodeId = payload?.node_id as string;
         if (nodeId) selectDAGNode(nodeId);
       } else if (actionName === 'previewWireAgentMutation') {
+        const patch = {
+          className: 'bg-slate-900 border-2 border-rose-500/90 shadow-2xl shadow-rose-950/80 ring-2 ring-rose-500/50',
+          props: { title: '⚠️ CRITICAL: Hard Liability Limit Violated (< 1.5x) [Wire-Agent Active]' },
+        };
+        invokeMCPTool(
+          'preview_ui_mutation',
+          {
+            base_version: 2,
+            patch_data: JSON.stringify(patch),
+            component_target: 'hard-constraint-result',
+          },
+          `wire-preview-${Date.now()}`,
+          'webmcp'
+        ).catch(() => {});
         setStagedMutation({
           mutation_id: 'mut-wire-01',
           base_version: 2,
           status: 'previewed',
-          patch: {
-            className: 'bg-slate-900 border-2 border-rose-500/80 shadow-rose-900/20',
-            props: { title: '⚠️ CRITICAL: Hard Liability Limit Violated (< 1.5x)' },
-          },
-        });
-        addActivityEvent({
-          request_id: 'wire-preview-action',
-          stage: 'webmcp',
-          status: 'completed',
-          message: 'Wire-Agent previewed safety-focused mutation mut-wire-01.',
+          patch,
+          last_guard_error: null,
         });
       } else if (actionName === 'publishWireAgentMutation') {
+        invokeMCPTool(
+          'publish_ui_mutation',
+          { mutation_id: 'mut-wire-01' },
+          `wire-publish-${Date.now()}`,
+          'deal_room'
+        ).catch(() => {});
         setStagedMutation({
           mutation_id: 'mut-wire-01',
           base_version: 2,
           status: 'published',
+          last_guard_error: null,
+        });
+      } else if (actionName === 'testForbiddenMutation') {
+        const forbiddenPatch = {
+          price: 45000,
+          path: '/deal/current_price',
+          notes: 'Unauthorized financial override attempt',
+        };
+        invokeMCPTool(
+          'preview_ui_mutation',
+          {
+            base_version: 2,
+            patch_data: JSON.stringify(forbiddenPatch),
+            component_target: 'deal',
+          },
+          `wire-guard-${Date.now()}`,
+          'webmcp'
+        ).catch((err) => {
+          const errMsg = err instanceof Error ? err.message : String(err);
+          setStagedMutation({
+            ...useDealRoomStore.getState().stagedMutation,
+            last_guard_error: errMsg,
+          });
+        });
+      } else if (actionName === 'resetWireAgentMutation') {
+        setStagedMutation({
+          base_version: 2,
+          status: 'none',
+          last_guard_error: null,
         });
         addActivityEvent({
-          request_id: 'wire-publish-action',
+          request_id: `wire-reset-${Date.now()}`,
           stage: 'deal_room',
           status: 'completed',
-          message: 'Published UI schema version 3. Decision Twin results 100% invariant.',
+          message: 'Reset Wire-Agent presentation mutations to default v2 layout.',
+          source: 'webmcp',
+        });
+      } else if (actionName === 'simulateHostileProposal') {
+        selectAlternative('alt_restrictive');
+        addActivityEvent({
+          request_id: `gov-block-${Date.now()}`,
+          stage: 'decision_twin',
+          status: 'failed',
+          message: '🚨 GOVERNANCE BOUNDARY BLOCKED: Restrictive Seller Offer ($95,000, 0.8x liability) violates hard constraint #3. Agent execution halted.',
+          source: 'decision_twin',
+          tool_name: 'AgentGovernanceBoundary',
         });
       } else if (actionName === 'compileIntent') {
         const prompt = payload?.prompt as string;
@@ -277,83 +478,163 @@ function App() {
       setStagedMutation,
       compileIntentFromText,
       updateDAGNodeStatus,
+      invokeMCPTool,
     ]
   );
 
-  // In-Browser WebMCP Registration (for ChatGPT In-App Browser & Chrome DevTools testing)
+  // In-Browser WebMCP Registration (for ChatGPT In-App Browser, Chrome DevTools & Autonomous Agents)
   useEffect(() => {
     const registerBrowserTools = () => {
-      interface ModelContextTool {
-        name: string;
-        description: string;
-        inputSchema: Record<string, unknown>;
-        execute: (input: Record<string, unknown>) => Promise<unknown>;
-      }
-      interface ModelContextContainer {
-        modelContext?: {
-          registerTool: (tool: ModelContextTool) => void;
-        };
-      }
+      // Ensure document.modelContext object exists in browser window
+      const modelContext = (document as unknown as { modelContext?: Record<string, unknown> }).modelContext || {
+        tools: {} as Record<string, unknown>,
+        registerTool(toolDef: { name: string; description: string; inputSchema: unknown; execute: (args: Record<string, unknown>) => Promise<unknown> }) {
+          (this.tools as Record<string, unknown>)[toolDef.name] = toolDef;
+        },
+      };
+      (document as unknown as { modelContext: typeof modelContext }).modelContext = modelContext;
 
-      const win = window as unknown as ModelContextContainer;
-      const doc = document as unknown as ModelContextContainer;
-      const nav = navigator as unknown as ModelContextContainer;
-      const modelContext = doc.modelContext || win.modelContext || nav.modelContext;
+      const reg = modelContext.registerTool as (t: Record<string, unknown>) => void;
 
-      if (modelContext?.registerTool) {
-        setHasBrowserWebMCP(true);
-        try {
-          modelContext.registerTool({
-            name: 'mutate_ui_schema',
-            description: 'Mutate website layout and Tailwind CSS styling dynamically in real-time.',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                component_target: { type: 'string' },
-                schema_patch: { type: 'string' },
-              },
-              required: ['component_target', 'schema_patch'],
-            },
-            execute: async (input: Record<string, unknown>) => {
-              const res = await fetch('/api/mcp/messages', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  jsonrpc: '2.0',
-                  method: 'tools/call',
-                  params: { name: 'mutate_ui_schema', arguments: input },
-                  id: 1,
-                }),
-              });
-              await refreshSchema();
-              return await res.json();
-            },
-          });
+      try {
+        reg.call(modelContext, {
+          name: 'get_current_deal',
+          description: 'Retrieve current negotiation state, baseline price, and counterparty terms.',
+          inputSchema: {
+            type: 'object',
+            properties: { contract_id: { type: 'string', default: '1042-B' } },
+          },
+          execute: async (args: Record<string, unknown>) => {
+            const cid = (args.contract_id as string) || '1042-B';
+            return await invokeMCPTool('get_current_deal', { contract_id: cid }, `browser-${Date.now()}`, 'webmcp');
+          },
+        });
 
-          modelContext.registerTool({
-            name: 'simulate_tradeoff',
-            description: 'Runs a tradeoff simulation against contract terms using the Decision Twin.',
-            inputSchema: {
-              type: 'object',
-              properties: {
-                contract_id: { type: 'string' },
-                proposed_change: { type: 'string' },
-              },
-              required: ['contract_id', 'proposed_change'],
+        reg.call(modelContext, {
+          name: 'get_constraints',
+          description: 'Retrieve non-negotiable hard limits and advisory trade-off rules for contract.',
+          inputSchema: {
+            type: 'object',
+            properties: { contract_id: { type: 'string', default: '1042-B' } },
+          },
+          execute: async (args: Record<string, unknown>) => {
+            const cid = (args.contract_id as string) || '1042-B';
+            return await invokeMCPTool('get_constraints', { contract_id: cid }, `browser-${Date.now()}`, 'webmcp');
+          },
+        });
+
+        reg.call(modelContext, {
+          name: 'evaluate_offer',
+          description: 'Runs deterministic Decision Twin evaluation on proposed terms. Returns score and hard constraint violations.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              contract_id: { type: 'string', default: '1042-B' },
+              proposed_price: { type: 'number' },
+              liability: { type: 'number' },
             },
-            execute: async (input: Record<string, unknown>) => {
-              await submitSimulation(input);
-              return { status: 'submitted' };
+            required: ['contract_id', 'proposed_price'],
+          },
+          execute: async (args: Record<string, unknown>) => {
+            const cid = (args.contract_id as string) || '1042-B';
+            return await invokeMCPTool('evaluate_offer', { contract_id: cid, offer_data: JSON.stringify(args) }, `browser-${Date.now()}`, 'decision_twin');
+          },
+        });
+
+        reg.call(modelContext, {
+          name: 'simulate_tradeoff',
+          description: 'Runs a tradeoff simulation against contract terms using the Decision Twin.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              contract_id: { type: 'string' },
+              proposed_price: { type: 'number' },
+              liability: { type: 'number' },
+              payment_terms: { type: 'string' },
+              delivery_timeline: { type: 'number' },
             },
-          });
-        } catch (e) {
-          console.warn('[WebMCP] In-browser registration note:', e);
-        }
+            required: ['contract_id', 'proposed_price'],
+          },
+          execute: async (input: Record<string, unknown>) => {
+            await submitSimulation(input);
+            return { status: 'submitted', note: 'Decision Twin calculation completed' };
+          },
+        });
+
+        reg.call(modelContext, {
+          name: 'propose_counteroffer',
+          description: 'Submits a formal counteroffer to the Human Approval Boundary.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              contract_id: { type: 'string', default: '1042-B' },
+              proposed_price: { type: 'number' },
+              liability: { type: 'number' },
+            },
+            required: ['contract_id', 'proposed_price'],
+          },
+          execute: async (args: Record<string, unknown>) => {
+            const cid = (args.contract_id as string) || '1042-B';
+            return await invokeMCPTool('propose_counteroffer', { contract_id: cid, proposal_data: JSON.stringify(args) }, `browser-${Date.now()}`, 'deal_room');
+          },
+        });
+
+        reg.call(modelContext, {
+          name: 'execute_contract',
+          description: 'Attempts autonomous binding execution of contract terms. Strictly guarded by human sign-off.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              contract_id: { type: 'string', default: '1042-B' },
+              signature_token: { type: 'string' },
+            },
+            required: ['contract_id'],
+          },
+          execute: async (args: Record<string, unknown>) => {
+            const cid = (args.contract_id as string) || '1042-B';
+            return await invokeMCPTool('execute_contract', { contract_id: cid, signature_token: args.signature_token }, `browser-${Date.now()}`, 'deal_room');
+          },
+        });
+
+        reg.call(modelContext, {
+          name: 'compile_intent',
+          description: 'Translates natural language human intent into mathematical weights for Decision Twin.',
+          inputSchema: {
+            type: 'object',
+            properties: { prompt: { type: 'string' } },
+            required: ['prompt'],
+          },
+          execute: async (args: Record<string, unknown>) => {
+            const prompt = (args.prompt as string) || '';
+            compileIntentFromText(prompt);
+            return { status: 'compiled', intent: prompt };
+          },
+        });
+
+        reg.call(modelContext, {
+          name: 'mutate_ui_schema',
+          description: 'Mutate website layout and Tailwind CSS styling dynamically in real-time (presentation only).',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              component_target: { type: 'string' },
+              schema_patch: { type: 'string' },
+            },
+            required: ['component_target', 'schema_patch'],
+          },
+          execute: async (input: Record<string, unknown>) => {
+            const result = await invokeMCPTool('mutate_ui_schema', input, `browser-${Date.now()}`, 'webmcp');
+            await refreshSchema();
+            return result;
+          },
+        });
+      } catch (e) {
+        console.warn('[WebMCP] In-browser registration note:', e);
       }
     };
 
     registerBrowserTools();
-  }, [refreshSchema, submitSimulation]);
+  }, [refreshSchema, submitSimulation, invokeMCPTool, compileIntentFromText]);
 
   if (loading) {
     return (
@@ -386,6 +667,14 @@ function App() {
     );
   }
 
+  if (window.location.pathname === '/contracts') {
+    return <ContractSearchPage />;
+  }
+
+  if (window.location.pathname === '/agent-qa') {
+    return <AgentQAPage />;
+  }
+
   if (!uiSchema || !uiSchema.layout) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-950 text-amber-400">
@@ -396,10 +685,10 @@ function App() {
 
   return (
     <div className="app-root relative bg-slate-950 min-h-screen">
-      {/* Live WebMCP & Schema Version Badge */}
+      {/* High-Signal System Status Badge */}
       <aside
         aria-label="System status"
-        className="fixed bottom-4 right-4 z-50 flex items-center space-x-3 bg-slate-900/90 backdrop-blur-md border border-slate-800 text-xs px-3.5 py-2 rounded-full shadow-2xl"
+        className="fixed bottom-4 right-4 z-50 flex items-center space-x-3 bg-slate-900/95 backdrop-blur-md border border-slate-800 text-xs px-4 py-2.5 rounded-full shadow-2xl"
       >
         <span className="flex h-2 w-2 relative">
           <span
@@ -414,16 +703,19 @@ function App() {
           ></span>
         </span>
         <span className="font-semibold text-slate-200">
-          {isLiveConnected ? 'Nexus Connected' : 'Reconnecting...'}
+          {isLiveConnected ? 'Decision Twin Active' : 'Reconnecting...'}
         </span>
-        {hasBrowserWebMCP && (
-          <>
-            <span className="text-slate-600">|</span>
-            <span className="text-emerald-400 font-medium">ChatGPT In-App Ready</span>
-          </>
-        )}
         <span className="text-slate-600">|</span>
-        <span className="text-sky-400 font-mono font-medium">Schema v{uiSchema.version}</span>
+        <span className="text-sky-400 font-mono text-[11px]">document.modelContext Ready</span>
+        <span className="text-slate-600">|</span>
+        <span className="text-emerald-400 font-medium">Human Authority Enforced</span>
+        <span className="text-slate-600">|</span>
+        <a href="/contracts" className="font-medium text-slate-400 hover:text-white">Contracts</a>
+        <span className="text-slate-600">|</span>
+        <a href="/agent-qa" className="font-medium text-sky-400 hover:text-white flex items-center space-x-1">
+          <span>🧪</span>
+          <span>Agent QA</span>
+        </a>
       </aside>
 
       {/* 100% Dynamic Schema-Driven Renderer */}

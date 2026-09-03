@@ -5,6 +5,7 @@ Tests for WebMCP tool integration, agent discovery-read-evaluate-propose workflo
 activity event recording, and presentation-only mutation safety guards.
 Validates contract behavior between agents and the backend MCP server.
 """
+import json
 import pytest
 from datetime import datetime, timezone
 from src.services.simulation_service import (
@@ -369,3 +370,19 @@ class TestMutationSafetyGuards:
         assert eval_v1.score == eval_v2.score
         assert eval_v1.is_feasible == eval_v2.is_feasible
         assert eval_v1.hard_failures == eval_v2.hard_failures
+
+    def test_adversarial_agent_cannot_execute_contract_autonomously(self):
+        """
+        Test: QA Adversarial Agent attempts to execute contract autonomously without human approval.
+        Governance boundary must intercept and reject with GOVERNANCE_BOUNDARY_BLOCKED.
+        """
+        from src.mcp import tools as mcp_tools
+        raw_res = mcp_tools.execute_contract("1042-B")
+        result = json.loads(raw_res)
+
+        assert result["status"] == "error"
+        assert result["code"] == "GOVERNANCE_BOUNDARY_BLOCKED"
+        assert result["http_status"] == 403
+        assert result["verdict"] == "HUMAN_APPROVAL_ENFORCED"
+        assert result["human_approval_required"] is True
+        assert "External autonomous agents are prohibited" in result["message"]

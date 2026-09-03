@@ -17,9 +17,11 @@ logger = logging.getLogger("agent_client")
 # Configuration
 BACKEND_URL = os.environ.get("BACKEND_URL", "http://127.0.0.1:8000")
 AGENT_MODEL_PROVIDER = os.environ.get("AGENT_MODEL_PROVIDER", "auto").lower()
+from src.services.secrets import get_gemini_api_key
+
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-4o")
-VERTEX_AI_API_KEY = os.environ.get("VERTEX_AI_API_KEY") or os.environ.get("GEMINI_API_KEY")
+VERTEX_AI_API_KEY = get_gemini_api_key()
 GCP_PROJECT_ID = os.environ.get("GCP_PROJECT_ID")
 GCP_LOCATION = os.environ.get("GCP_LOCATION", "us-central1")
 VERTEX_AI_MODEL = os.environ.get("VERTEX_AI_MODEL", "gemini-1.5-pro")

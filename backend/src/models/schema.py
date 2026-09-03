@@ -9,3 +9,16 @@ class UISchema(Base):
     version = Column(Integer, default=1)
     layout = Column(JSON, nullable=False)
     is_published = Column(Boolean, default=False)
+
+
+class DealRecord(Base):
+    __tablename__ = "deal_records"
+
+    id = Column(String, primary_key=True)
+    contract_id = Column(String, nullable=False, index=True)
+    title = Column(String, nullable=False)
+    counterparty = Column(String, nullable=False, index=True)
+    status = Column(String, nullable=False, index=True)
+    annual_value = Column(Integer, nullable=False)
+    liability_cap = Column(String, nullable=False)
+    updated_at = Column(String, nullable=False)

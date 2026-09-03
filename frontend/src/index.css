@@ -1,1 +1,57 @@
 @import "tailwindcss";
+@source "../../backend/src/seeds";
+
+/* -------------------------------------------------------------------------
+   React Flow Controls Custom Sizing & Dark-Mode High-Contrast Styling
+   Fixes white block issue, makes +/- buttons clearly visible and compact
+   ------------------------------------------------------------------------- */
+.react-flow__controls {
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6) !important;
+  border-radius: 6px !important;
+  overflow: hidden !important;
+  border: 1px solid #334155 !important; /* border-slate-700 */
+  background: #0f172a !important; /* bg-slate-900 */
+  transform: scale(0.8);
+  transform-origin: bottom left;
+  margin-bottom: 8px !important;
+  margin-left: 8px !important;
+}
+
+.react-flow__controls-button {
+  background: #0f172a !important; /* bg-slate-900 */
+  border: none !important;
+  border-bottom: 1px solid #1e293b !important; /* border-slate-800 */
+  box-sizing: border-box !important;
+  width: 22px !important;
+  height: 22px !important;
+  padding: 3px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease-in-out !important;
+}
+
+.react-flow__controls-button:last-child {
+  border-bottom: none !important;
+}
+
+.react-flow__controls-button:hover {
+  background: #1e293b !important; /* hover:bg-slate-800 */
+}
+
+/* Ensure SVG icons for +, -, fitView are crisp, clearly visible, and responsive */
+.react-flow__controls-button svg,
+.react-flow__controls-button svg path {
+  fill: #94a3b8 !important; /* text-slate-400 */
+  stroke: #94a3b8 !important;
+  max-width: 11px !important;
+  max-height: 11px !important;
+  transition: fill 0.15s ease, stroke 0.15s ease !important;
+}
+
+.react-flow__controls-button:hover svg,
+.react-flow__controls-button:hover svg path {
+  fill: #38bdf8 !important; /* hover:text-sky-400 */
+  stroke: #38bdf8 !important;
+}

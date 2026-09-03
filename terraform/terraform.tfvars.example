@@ -1,0 +1,27 @@
+# ------------------------------------------------------------------------------
+# Example Terraform Configuration for Nexus Deal Room Cloud Run Deployment
+# ------------------------------------------------------------------------------
+
+# Your Google Cloud Project ID
+project_id = "avian-augury-411109"
+
+# GCP Region for Cloud Run and Artifact Registry
+region = "us-central1"
+
+# Cloud Run service name
+service_name = "nexus-deal-room"
+
+# GitHub repository authorized for Workload Identity Federation (format: "owner/repo")
+github_repository = "Harinath0225/Agent-Negotiation-Room"
+
+# Existing Workload Identity Pool ID in your GCP project
+workload_identity_pool_id = "github-actions-pool"
+
+# Existing Workload Identity Provider ID within the pool
+workload_identity_pool_provider_id = "github-actions-provider"
+
+# Name of the existing Gemini API key in GCP Secret Manager
+gemini_secret_name = "gemini-api-key"
+
+# Allow unauthenticated public web traffic to Cloud Run (true/false)
+allow_unauthenticated = true

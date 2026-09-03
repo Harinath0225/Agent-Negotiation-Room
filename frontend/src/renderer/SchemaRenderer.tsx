@@ -33,19 +33,23 @@ const ConstraintKitchenCard: React.FC<{
   const { intentWeights, compileIntentFromText, addActivityEvent } = useDealRoomStore();
   const [promptInput, setPromptInput] = React.useState('');
 
-  const handleSubmitIntent = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!promptInput.trim()) return;
-    compileIntentFromText(promptInput);
+  const applyIntent = (text: string) => {
+    compileIntentFromText(text);
     if (onAction) {
-      onAction('compileIntent', { prompt: promptInput });
+      onAction('compileIntent', { prompt: text });
     }
     addActivityEvent({
       request_id: `intent-${Date.now()}`,
       stage: 'negotiator',
       status: 'completed',
-      message: `Constraint Kitchen compiled natural language intent: "${promptInput}" into dynamic mathematical weights.`,
+      message: `Constraint Kitchen compiled human intent: "${text}" into executable negotiation policy.`,
     });
+  };
+
+  const handleSubmitIntent = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!promptInput.trim()) return;
+    applyIntent(promptInput);
     setPromptInput('');
   };
 
@@ -53,36 +57,67 @@ const ConstraintKitchenCard: React.FC<{
     <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-6 shadow-xl backdrop-blur-sm space-y-4">
       <div className="flex items-center justify-between pb-3 border-b border-slate-800">
         <div>
-          <h2 className="text-lg font-semibold text-white">{title || 'Constraint Kitchen (Human Intent Compiler)'}</h2>
-          <p className="text-xs text-slate-400">State strategic intent in plain language to compile mathematical weights</p>
+          <h2 className="text-lg font-semibold text-white">
+            {title || 'Constraint Kitchen'}
+          </h2>
+          <p className="text-xs text-slate-400">
+            Turn human priorities into executable negotiation policy
+          </p>
         </div>
         <span className="px-2.5 py-1 rounded-full text-xs font-mono font-bold bg-sky-500/10 text-sky-400 border border-sky-500/30">
-          Node 1: Intent
+          Tier 1: Intent
         </span>
       </div>
 
-      <form onSubmit={handleSubmitIntent} className="space-y-3">
-        <div className="flex space-x-2">
+      {/* Tier 1: Human Intent Input & Quick-Picks */}
+      <div className="space-y-2">
+        <div className="flex flex-wrap gap-1.5 text-[11px]">
+          <span className="text-slate-400 self-center mr-1">Quick Presets:</span>
+          <button
+            type="button"
+            onClick={() => applyIntent('Speed and timeline delivery are our highest priorities for Phase 1')}
+            className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-sky-300 rounded border border-slate-700 transition"
+          >
+            ⚡ Speed &gt; Price
+          </button>
+          <button
+            type="button"
+            onClick={() => applyIntent('Liability coverage must be strictly maintained at 1.5x minimum without compromise')}
+            className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-amber-300 rounded border border-slate-700 transition"
+          >
+            🛡️ Strict Liability Defense
+          </button>
+          <button
+            type="button"
+            onClick={() => applyIntent('Maximize discount savings. Budget and margin are our primary target')}
+            className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-emerald-300 rounded border border-slate-700 transition"
+          >
+            💰 Maximize Savings
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmitIntent} className="flex space-x-2 pt-1">
           <input
             type="text"
             value={promptInput}
             onChange={(e) => setPromptInput(e.target.value)}
-            placeholder="e.g. Speed is more important than budget right now..."
+            placeholder="e.g. We need this signed this month. Price is negotiable, liability is not..."
             className="flex-1 px-3.5 py-2.5 bg-slate-950/80 border border-slate-800 rounded-lg text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-500 transition-colors"
           />
           <button
             type="submit"
             className="py-2.5 px-4 bg-sky-600 hover:bg-sky-500 text-white font-semibold text-xs rounded-lg transition-colors shadow-md"
           >
-            Compile Intent
+            Compile Policy
           </button>
-        </div>
-      </form>
+        </form>
+      </div>
 
+      {/* Tier 2: Compiled Mathematical Policy */}
       <div className="p-3.5 bg-slate-950/60 border border-slate-800 rounded-lg space-y-3 text-xs">
         <div className="flex items-center justify-between text-slate-300">
-          <span className="font-semibold text-slate-200">Current Intent Weights:</span>
-          <span className="font-mono text-[11px] text-slate-400 truncate max-w-xs">{intentWeights.raw_intent || 'Default distribution'}</span>
+          <span className="font-semibold text-slate-200">Compiled Weights (w_i):</span>
+          <span className="font-mono text-[11px] text-slate-400 truncate max-w-xs">{intentWeights.raw_intent || 'Default policy'}</span>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 font-mono">
@@ -104,7 +139,118 @@ const ConstraintKitchenCard: React.FC<{
           </div>
         </div>
       </div>
+
+      {/* Tier 3: Agent Authority Boundary Matrix */}
+      <div className="p-3 bg-slate-950/40 border border-slate-800/80 rounded-lg space-y-2 text-xs">
+        <div className="flex items-center justify-between pb-1 border-b border-slate-800/60">
+          <span className="font-semibold text-slate-300 text-[11px] uppercase tracking-wide">
+            Agent Governance Authority Matrix
+          </span>
+          <span className="text-[10px] font-mono text-emerald-400">Strictly Enforced</span>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+          <div className="flex items-center justify-between p-1.5 rounded bg-slate-900/80 border border-slate-800">
+            <span className="text-slate-300">Price Concession Band (±15%)</span>
+            <span className="text-emerald-400 font-semibold">ALLOWED ✓</span>
+          </div>
+          <div className="flex items-center justify-between p-1.5 rounded bg-slate-900/80 border border-slate-800">
+            <span className="text-slate-300">Trade Payment Terms for Speed</span>
+            <span className="text-emerald-400 font-semibold">ALLOWED ✓</span>
+          </div>
+          <div className="flex items-center justify-between p-1.5 rounded bg-rose-950/20 border border-rose-900/30">
+            <span className="text-slate-300">Alter Liability Limit (&lt; 1.5x)</span>
+            <span className="text-rose-400 font-semibold">BLOCKED ✗</span>
+          </div>
+          <div className="flex items-center justify-between p-1.5 rounded bg-amber-950/20 border border-amber-900/30">
+            <span className="text-slate-300">Autonomous Contract Signing</span>
+            <span className="text-amber-400 font-semibold">HUMAN ONLY ✍️</span>
+          </div>
+        </div>
+      </div>
     </div>
+  );
+};
+
+const OfferDetailsForm: React.FC<{
+  props: Record<string, unknown>;
+  onAction?: (actionName: string, payload?: Record<string, unknown>) => void;
+}> = ({ props, onAction }) => {
+  const [proposedPrice, setProposedPrice] = React.useState(String(props.proposed_price ?? 100000));
+  const [liability, setLiability] = React.useState(String(props.liability ?? 1.5));
+  const [paymentTerms, setPaymentTerms] = React.useState(String(props.payment_terms ?? 'Net 30'));
+  const [deliveryTimeline, setDeliveryTimeline] = React.useState(String(props.delivery_timeline ?? 90));
+  const currentPrice = typeof props.current_price === 'number' ? props.current_price : 120000;
+
+  React.useEffect(() => {
+    const fillOfferDetails = (event: Event) => {
+      const detail = (event as CustomEvent<Record<string, unknown>>).detail;
+      if (!detail) return;
+
+      if (typeof detail.proposed_price === 'number' && Number.isFinite(detail.proposed_price)) {
+        setProposedPrice(String(detail.proposed_price));
+      }
+      if (typeof detail.liability === 'number' && Number.isFinite(detail.liability)) {
+        setLiability(String(detail.liability));
+      }
+      if (typeof detail.payment_terms === 'string') {
+        setPaymentTerms(detail.payment_terms);
+      }
+      if (typeof detail.delivery_timeline === 'number' && Number.isFinite(detail.delivery_timeline)) {
+        setDeliveryTimeline(String(detail.delivery_timeline));
+      }
+    };
+
+    document.addEventListener('deal-room:offer-details', fillOfferDetails);
+    return () => document.removeEventListener('deal-room:offer-details', fillOfferDetails);
+  }, []);
+
+  const handleSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
+    const price = Number(proposedPrice);
+    const liabilityCap = Number(liability);
+    const timeline = Number(deliveryTimeline);
+
+    if (!Number.isFinite(price) || price < 0 || !Number.isFinite(liabilityCap) || liabilityCap < 0 || !Number.isFinite(timeline) || timeline < 0) {
+      return;
+    }
+
+    onAction?.((props.action as string) || 'simulateTradeoff', {
+      contract_id: (props.contract_id as string) || '1042-B',
+      current_price: currentPrice,
+      proposed_price: price,
+      price_delta: price - currentPrice,
+      offer_details: {
+        liability: liabilityCap,
+        payment_terms: paymentTerms,
+        delivery_timeline: timeline,
+      },
+    });
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <label className="space-y-1.5">
+          <span className="text-xs font-medium text-slate-300">Proposed annual price</span>
+          <input aria-label="Proposed annual price" required min="0" step="1000" type="number" value={proposedPrice} onChange={(event) => setProposedPrice(event.target.value)} className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-white focus:border-sky-500 focus:outline-none" />
+        </label>
+        <label className="space-y-1.5">
+          <span className="text-xs font-medium text-slate-300">Liability cap (x annual value)</span>
+          <input aria-label="Liability cap" required min="0" step="0.1" type="number" value={liability} onChange={(event) => setLiability(event.target.value)} className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-white focus:border-sky-500 focus:outline-none" />
+        </label>
+        <label className="space-y-1.5">
+          <span className="text-xs font-medium text-slate-300">Payment terms</span>
+          <input aria-label="Payment terms" required type="text" value={paymentTerms} onChange={(event) => setPaymentTerms(event.target.value)} className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-white focus:border-sky-500 focus:outline-none" />
+        </label>
+        <label className="space-y-1.5">
+          <span className="text-xs font-medium text-slate-300">Delivery timeline (days)</span>
+          <input aria-label="Delivery timeline" required min="0" step="1" type="number" value={deliveryTimeline} onChange={(event) => setDeliveryTimeline(event.target.value)} className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-white focus:border-sky-500 focus:outline-none" />
+        </label>
+      </div>
+      <button type="submit" className="w-full rounded-lg border border-sky-400/30 bg-sky-500 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-sky-950/30 transition-colors hover:bg-sky-400">
+        Evaluate Offer
+      </button>
+    </form>
   );
 };
 
@@ -125,10 +271,9 @@ export const SchemaRenderer: React.FC<SchemaRendererProps> = ({ node, onAction }
     selectedDAGNodeId,
     selectDAGNode,
     stagedMutation,
-    setStagedMutation,
-    addActivityEvent,
     approvalStatus,
   } = useDealRoomStore();
+  const [activityFilter, setActivityFilter] = React.useState<'all' | 'webmcp' | 'failures'>('all');
 
   const { type, props = {}, className = '', children = [] } = node;
 
@@ -146,6 +291,10 @@ export const SchemaRenderer: React.FC<SchemaRendererProps> = ({ node, onAction }
       (props.onClick as (e: React.MouseEvent) => void)(e);
     }
   };
+
+  if (type === 'offer-details-form') {
+    return <OfferDetailsForm props={props} onAction={onAction} />;
+  }
 
   // 1. Simulation Control Node
   if (type === 'simulation-control') {
@@ -509,6 +658,21 @@ export const SchemaRenderer: React.FC<SchemaRendererProps> = ({ node, onAction }
 
   // 4. Activity Timeline / Agent Activity Log Node (US2)
   if (type === 'activity-timeline' || type === 'agent-activity-log') {
+    const visibleEvents = activityEvents.filter((event) =>
+      activityFilter === 'webmcp'
+        ? event.source === 'webmcp'
+        : activityFilter === 'failures'
+        ? event.status === 'failed'
+        : true
+    );
+    const activeEvent = activityEvents.find(
+      (event) => event.status === 'started' && !activityEvents.some(
+        (completedEvent) =>
+          completedEvent.request_id === event.request_id &&
+          completedEvent.stage === event.stage &&
+          (completedEvent.status === 'completed' || completedEvent.status === 'failed')
+      )
+    );
     const getStageColor = (stage: WorkflowStageId) => {
       switch (stage) {
         case 'negotiator':
@@ -537,11 +701,36 @@ export const SchemaRenderer: React.FC<SchemaRendererProps> = ({ node, onAction }
               {activityEvents.length} events
             </span>
           </div>
-          <span className="text-[11px] text-slate-500">Capped at 50 (newest first)</span>
+          <span className="text-[11px] text-slate-500">Newest first</span>
         </div>
 
+        <div className="flex flex-wrap items-center gap-2">
+          {(['all', 'webmcp', 'failures'] as const).map((filter) => (
+            <button
+              key={filter}
+              type="button"
+              onClick={() => setActivityFilter(filter)}
+              className={`rounded px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide ${
+                activityFilter === filter
+                  ? 'bg-sky-500/20 text-sky-300 border border-sky-400/50'
+                  : 'bg-slate-950 text-slate-500 border border-slate-800'
+              }`}
+            >
+              {filter === 'all' ? 'All' : filter === 'webmcp' ? 'WebMCP only' : 'Failures'}
+            </button>
+          ))}
+        </div>
+
+        {activeEvent && (
+          <div className="border border-sky-400/50 bg-sky-950/40 rounded-lg px-3 py-2 text-xs">
+            <span className="text-sky-300 font-semibold">CURRENT STEP</span>
+            <span className="text-slate-300"> {activeEvent.tool_name || activeEvent.stage.replace('_', ' ')}</span>
+            <span className="text-slate-500 font-mono"> · {activeEvent.request_id}</span>
+          </div>
+        )}
+
         <div className="max-h-80 overflow-y-auto space-y-2.5 pr-1 text-xs">
-          {activityEvents.map((evt) => {
+          {visibleEvents.map((evt) => {
             const isStageSelected = selectedStageId === evt.stage;
 
             return (
@@ -556,7 +745,7 @@ export const SchemaRenderer: React.FC<SchemaRendererProps> = ({ node, onAction }
                     : 'bg-slate-950/60 border-slate-800/80 hover:border-slate-700'
                 }`}
               >
-                <div className="flex items-center justify-between mb-1.5">
+                <div className="flex items-center justify-between mb-1.5 gap-2">
                   <span
                     className={`px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider border ${getStageColor(
                       evt.stage
@@ -579,6 +768,13 @@ export const SchemaRenderer: React.FC<SchemaRendererProps> = ({ node, onAction }
                     </span>
                   </div>
                 </div>
+                <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-slate-500 font-mono mb-1.5">
+                  <span className={evt.source === 'webmcp' ? 'text-purple-300' : 'text-slate-400'}>
+                    {evt.source === 'webmcp' ? 'WEBMCP' : (evt.source || 'system').toUpperCase()}
+                  </span>
+                  <span>{evt.tool_name || 'workflow event'}</span>
+                  <span>{evt.request_id}</span>
+                </div>
                 <p className="text-slate-300 leading-snug">{evt.message}</p>
               </div>
             );
@@ -590,11 +786,37 @@ export const SchemaRenderer: React.FC<SchemaRendererProps> = ({ node, onAction }
 
   // 5. Hard Constraint Result Node (Phase 3: US1)
   if (type === 'hard-constraint-result') {
+    const isWireAgentActive = stagedMutation.status === 'previewed' || stagedMutation.status === 'published';
+    const cardClass = isWireAgentActive && stagedMutation.patch?.className
+      ? `${stagedMutation.patch.className as string} rounded-xl p-6 transition-all duration-300 space-y-4`
+      : 'bg-slate-900/90 border border-slate-800 rounded-xl p-6 shadow-xl backdrop-blur-sm space-y-4';
+    const cardTitle = (isWireAgentActive && (stagedMutation.patch?.props as Record<string, unknown>)?.title as string) || (props.title as string) || 'Hard Constraint Evaluation';
+
     if (!lastOutcome || simulationStatus !== 'succeeded') {
       return (
-        <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-6 shadow-xl backdrop-blur-sm">
-          <div className="py-6 text-center text-slate-400">
-            <p className="text-sm">Run a simulation to see constraint evaluation results.</p>
+        <div className={cardClass}>
+          <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+            <h2 className="text-lg font-semibold text-white flex items-center space-x-2">
+              <span>{cardTitle}</span>
+            </h2>
+            {isWireAgentActive && (
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40 animate-pulse">
+                Wire-Agent Active
+              </span>
+            )}
+          </div>
+          <div className="py-4 text-slate-300 space-y-2">
+            <p className="text-sm">
+              {isWireAgentActive
+                ? '⚠️ Wire-Agent presentation preview applied: Enhanced contrast danger alert for non-negotiable 1.5x liability limit.'
+                : 'Run a simulation or select an alternative to see constraint evaluation results.'}
+            </p>
+            {isWireAgentActive && (
+              <div className="p-3 bg-rose-950/40 border border-rose-800/40 rounded-lg text-xs text-rose-200">
+                <span className="font-semibold block mb-1">Non-Negotiable Constraint Rule:</span>
+                Liability Coverage must be ≥ 1.5x. Restrictive offers with liability &lt; 1.5x result in immediate Hard Failure.
+              </div>
+            )}
           </div>
         </div>
       );
@@ -607,11 +829,18 @@ export const SchemaRenderer: React.FC<SchemaRendererProps> = ({ node, onAction }
       : [];
 
     return (
-      <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-6 shadow-xl backdrop-blur-sm space-y-4">
+      <div className={cardClass}>
         <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-          <h2 className="text-lg font-semibold text-white">
-            {(props.title as string) || 'Hard Constraint Evaluation'}
-          </h2>
+          <div className="flex items-center space-x-2">
+            <h2 className="text-lg font-semibold text-white">
+              {cardTitle}
+            </h2>
+            {isWireAgentActive && (
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40">
+                Wire-Agent Active
+              </span>
+            )}
+          </div>
           <span
             className={`text-xs px-2.5 py-0.5 rounded-full font-medium border ${
               hasHardFailure
@@ -899,12 +1128,25 @@ export const SchemaRenderer: React.FC<SchemaRendererProps> = ({ node, onAction }
 
     return (
       <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-6 shadow-xl backdrop-blur-sm space-y-4">
-        <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+        <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-800">
           <div>
             <h2 className="text-lg font-semibold text-white">{(props.title as string) || 'Compare Decision Alternatives'}</h2>
             <p className="text-xs text-slate-400">Current Deal vs. Strategic Counteroffers</p>
           </div>
-          <span className="text-xs text-sky-400 font-medium">3-Way Comparison Matrix</span>
+          <div className="flex items-center space-x-2">
+            <button
+              type="button"
+              onClick={() => {
+                selectAlternative('alt_restrictive');
+                onAction?.('simulateHostileProposal');
+              }}
+              className="px-2.5 py-1 bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 border border-rose-700/60 rounded text-[11px] font-medium transition flex items-center space-x-1"
+            >
+              <span>🚨</span>
+              <span>Test Governance Boundary ($95k / 0.8x)</span>
+            </button>
+            <span className="text-xs text-sky-400 font-medium hidden sm:inline">3-Way Comparison Matrix</span>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -979,6 +1221,36 @@ export const SchemaRenderer: React.FC<SchemaRendererProps> = ({ node, onAction }
             );
           })}
         </div>
+
+        {selectedAltId === 'alt_restrictive' && (
+          <div className="p-4 bg-rose-950/30 border-2 border-rose-500/60 rounded-xl space-y-3 mt-4 animate-fadeIn">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-bold text-rose-300 flex items-center space-x-2">
+                <span className="text-base">🚨</span>
+                <span>AGENT GOVERNANCE BOUNDARY TRIGGERED</span>
+              </span>
+              <span className="px-2 py-0.5 rounded font-mono text-[10px] bg-rose-900/80 text-rose-200 border border-rose-600 font-bold uppercase">
+                Execution Blocked
+              </span>
+            </div>
+            <p className="text-xs text-rose-200 leading-relaxed">
+              The external agent evaluated this offer ($95,000 price concession), but the <strong>Decision Twin</strong> detected a fatal hard constraint violation: <em>Liability cap of 0.8x is strictly below the non-negotiable human policy threshold (1.5x)</em>.
+            </p>
+            <div className="p-3 bg-slate-900/90 border border-slate-800 rounded-lg text-xs space-y-1">
+              <div className="text-[11px] font-semibold text-sky-400">🤖 Agent Strategic Deliberation & Adaptive Pivot:</div>
+              <p className="text-slate-300 text-[11px] italic leading-relaxed">
+                "Decision Twin blocked proposal: Liability coverage violates non-negotiable hard constraint #3. Cannot accept $95,000 at this risk level. Pivoting to Payment Terms concession (Net 30) with compliant 1.5x liability at $105,000."
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => selectAlternative('alt_counter_a')}
+              className="px-3.5 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-xs font-semibold transition flex items-center space-x-1.5 shadow"
+            >
+              <span>★ Pivot to Next Best Move (Counter Proposal A • $105,000)</span>
+            </button>
+          </div>
+        )}
       </div>
     );
   }
@@ -990,46 +1262,30 @@ export const SchemaRenderer: React.FC<SchemaRendererProps> = ({ node, onAction }
     const currentVersion = isPublished ? 3 : 2;
 
     const handlePreview = () => {
-      setStagedMutation({
-        mutation_id: 'mut-wire-01',
-        base_version: 2,
-        status: 'previewed',
-        patch: {
-          className: 'bg-slate-900 border-2 border-rose-500/80 shadow-rose-900/20',
-          props: { title: '⚠️ CRITICAL: Hard Liability Limit Violated (< 1.5x)' },
-        },
-      });
-      addActivityEvent({
-        request_id: 'wire-mut-preview',
-        stage: 'webmcp',
-        status: 'completed',
-        message: 'Wire-Agent generated visual-only mutation preview (mut-wire-01). Invariance verified.',
-      });
+      onAction?.('previewWireAgentMutation');
     };
 
     const handlePublish = () => {
-      setStagedMutation({
-        mutation_id: 'mut-wire-01',
-        base_version: 2,
-        status: 'published',
-      });
-      addActivityEvent({
-        request_id: 'wire-mut-publish',
-        stage: 'deal_room',
-        status: 'completed',
-        message: 'Published UI schema version 3. Decision Twin results 100% invariant.',
-      });
+      onAction?.('publishWireAgentMutation');
+    };
+
+    const handleReset = () => {
+      onAction?.('resetWireAgentMutation');
+    };
+
+    const handleTestForbidden = () => {
+      onAction?.('testForbiddenMutation');
     };
 
     return (
       <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-6 shadow-xl backdrop-blur-sm space-y-4">
         <div className="flex items-center justify-between pb-3 border-b border-slate-800">
           <div>
-            <h2 className="text-lg font-semibold text-white">Wire-Agent UX Evolution & Safety Guard</h2>
-            <p className="text-xs text-slate-400">Presentation-only schema mutation workflow</p>
+            <h2 className="text-lg font-semibold text-white">Epilogue: Wire-Agent UX Evolution & Safety Boundary</h2>
+            <p className="text-xs text-slate-400">The agent can change how the application communicates its decisions, but cannot change the decisions themselves.</p>
           </div>
           <span className="px-2.5 py-1 rounded-full text-xs font-mono font-bold bg-sky-500/10 text-sky-400 border border-sky-500/30">
-            UI Schema v{currentVersion}
+            Capability Boundary v{currentVersion}
           </span>
         </div>
 
@@ -1042,6 +1298,26 @@ export const SchemaRenderer: React.FC<SchemaRendererProps> = ({ node, onAction }
             Wire-Agent can safely refine UI layout and Tailwind styling via WebMCP. All patches targeting business terms, constraints, or Decision Twin logic are blocked.
           </p>
         </div>
+
+        {stagedMutation.last_guard_error && (
+          <div className="p-3.5 bg-rose-950/40 border border-rose-500/60 rounded-lg text-xs space-y-1.5 animate-pulse">
+            <div className="flex items-center justify-between text-rose-300 font-semibold">
+              <span className="flex items-center space-x-1.5">
+                <span>🚫</span>
+                <span>SAFETY GUARD INTERCEPTION</span>
+              </span>
+              <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded bg-rose-900/80 text-rose-200 border border-rose-600">
+                BLOCKED 403
+              </span>
+            </div>
+            <p className="text-rose-200 font-mono text-[11px] leading-relaxed">
+              {stagedMutation.last_guard_error}
+            </p>
+            <p className="text-[10px] text-slate-400 pt-1 border-t border-rose-900/40">
+              Deterministic guarantee: Financial and legal terms remain strictly immutable to UI styling agents.
+            </p>
+          </div>
+        )}
 
         {isPreviewed && (
           <div className="p-3.5 bg-amber-950/30 border border-amber-500/40 rounded-lg text-xs space-y-2">
@@ -1072,35 +1348,45 @@ export const SchemaRenderer: React.FC<SchemaRendererProps> = ({ node, onAction }
           </div>
         )}
 
-        <div className="flex space-x-3 pt-2">
-          {!isPreviewed && !isPublished && (
-            <button
-              id="wire-agent-preview-btn"
-              onClick={handlePreview}
-              className="flex-1 py-2.5 px-4 bg-sky-600 hover:bg-sky-500 text-white rounded-lg font-semibold text-xs transition-all shadow-md"
-            >
-              Preview Wire-Agent Mutation
-            </button>
-          )}
+        <div className="space-y-2 pt-1">
+          <div className="flex space-x-3">
+            {!isPreviewed && !isPublished && (
+              <button
+                id="wire-agent-preview-btn"
+                onClick={handlePreview}
+                className="flex-1 py-2.5 px-4 bg-sky-600 hover:bg-sky-500 text-white rounded-lg font-semibold text-xs transition-all shadow-md hover:shadow-sky-500/20"
+              >
+                Preview Wire-Agent Mutation
+              </button>
+            )}
 
-          {isPreviewed && (
-            <button
-              id="wire-agent-publish-btn"
-              onClick={handlePublish}
-              className="flex-1 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-semibold text-xs transition-all shadow-md"
-            >
-              Publish Mutation to v3
-            </button>
-          )}
+            {isPreviewed && (
+              <button
+                id="wire-agent-publish-btn"
+                onClick={handlePublish}
+                className="flex-1 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-semibold text-xs transition-all shadow-md hover:shadow-emerald-500/20"
+              >
+                Publish Mutation to v3
+              </button>
+            )}
 
-          {(isPreviewed || isPublished) && (
-            <button
-              onClick={() => setStagedMutation({ base_version: 2, status: 'none' })}
-              className="py-2.5 px-4 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg font-semibold text-xs transition-all"
-            >
-              Reset Mutation
-            </button>
-          )}
+            {(isPreviewed || isPublished || stagedMutation.last_guard_error) && (
+              <button
+                onClick={handleReset}
+                className="py-2.5 px-4 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg font-semibold text-xs transition-all"
+              >
+                Reset
+              </button>
+            )}
+          </div>
+
+          <button
+            type="button"
+            onClick={handleTestForbidden}
+            className="w-full py-2 px-3 bg-slate-950 hover:bg-rose-950/40 text-slate-400 hover:text-rose-300 border border-slate-800 hover:border-rose-700/60 rounded-lg text-[11px] font-mono transition-all flex items-center justify-center space-x-1.5 shadow-sm"
+          >
+            <span>🛡️ Test Safety Guard (Attempt Forbidden Price Edit)</span>
+          </button>
         </div>
       </div>
     );
@@ -1149,29 +1435,45 @@ export const SchemaRenderer: React.FC<SchemaRendererProps> = ({ node, onAction }
       id: e.id,
       source: e.source,
       target: e.target,
-      animated: true,
+      animated: dagNodes.some((node) => node.id === e.source && node.status === 'active'),
       markerEnd: { type: MarkerType.ArrowClosed, color: '#38bdf8' },
-      style: { stroke: '#0284c7', strokeWidth: 2 },
+      style: {
+        stroke: dagNodes.some((node) => node.id === e.source && node.status === 'active') ? '#38bdf8' : '#334155',
+        strokeWidth: dagNodes.some((node) => node.id === e.source && node.status === 'active') ? 3 : 2,
+      },
     }));
 
     return (
       <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-6 shadow-xl backdrop-blur-sm space-y-4">
-        <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+        <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-800">
           <div>
-            <h2 className="text-lg font-semibold text-white">
-              {(props.title as string) || 'WebMCP Agent Execution DAG'}
-            </h2>
+            <div className="flex items-center space-x-2">
+              <h2 className="text-lg font-semibold text-white">
+                {(props.title as string) || 'WebMCP Agent Execution DAG'}
+              </h2>
+              <span className="text-xs font-mono px-2 py-0.5 rounded bg-sky-500/10 text-sky-400 border border-sky-500/20">
+                @xyflow/react
+              </span>
+            </div>
             <p className="text-xs text-slate-400">
-              Interactive React Flow execution graph • Click a node to inspect payload
+              Deterministic 6-node decision loop • Click any node to inspect payload
             </p>
           </div>
-          <span className="text-xs font-mono px-2.5 py-1 rounded bg-sky-500/10 text-sky-400 border border-sky-500/20">
-            @xyflow/react
-          </span>
+
+          <div className="flex items-center space-x-2">
+            <button
+              type="button"
+              onClick={() => onAction?.('simulateTradeoff', { contract_id: '1042-B' })}
+              className="px-3.5 py-1.5 bg-sky-600 hover:bg-sky-500 active:bg-sky-700 text-white rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-all shadow-md hover:shadow-sky-500/20"
+            >
+              <span>⚡</span>
+              <span>Run Live WebMCP Loop</span>
+            </button>
+          </div>
         </div>
 
         {/* Interactive React Flow Canvas */}
-        <div className="h-40 w-full rounded-lg border border-slate-800 bg-slate-950 overflow-hidden relative">
+        <div className="h-44 w-full rounded-lg border border-slate-800 bg-slate-950 overflow-hidden relative shadow-inner">
           <ReactFlow
             nodes={flowNodes}
             edges={flowEdges}
@@ -1180,21 +1482,28 @@ export const SchemaRenderer: React.FC<SchemaRendererProps> = ({ node, onAction }
             proOptions={{ hideAttribution: true }}
           >
             <Background color="#1e293b" gap={16} />
-            <Controls showInteractive={false} className="bg-slate-800 border-slate-700 text-white" />
+            <Controls showInteractive={false} />
           </ReactFlow>
         </div>
 
         {/* Selected Node Inspector Drawer */}
         {selectedNode && (
-          <div className="p-4 bg-slate-950/80 border border-slate-800 rounded-lg space-y-2">
+          <div className="p-4 bg-slate-950/80 border border-slate-800 rounded-lg space-y-3">
             <div className="flex items-center justify-between">
-              <span className="font-semibold text-sm text-white">{selectedNode.label}</span>
+              <span className="font-semibold text-sm text-white flex items-center space-x-2">
+                <span>{selectedNode.label}</span>
+                {selectedNode.status === 'active' && (
+                  <span className="inline-block w-2 h-2 rounded-full bg-sky-400 animate-ping" />
+                )}
+              </span>
               <span
                 className={`px-2.5 py-0.5 rounded-full text-[10px] font-mono uppercase font-bold border ${
                   selectedNode.status === 'completed'
                     ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
                     : selectedNode.status === 'active'
                     ? 'bg-sky-500/20 text-sky-400 border-sky-500/40'
+                    : selectedNode.status === 'failed'
+                    ? 'bg-rose-500/20 text-rose-400 border-rose-500/40'
                     : 'bg-slate-800 text-slate-400 border-slate-700'
                 }`}
               >
@@ -1220,8 +1529,136 @@ export const SchemaRenderer: React.FC<SchemaRendererProps> = ({ node, onAction }
             <p className="text-xs text-slate-300 pt-1 border-t border-slate-800/80 leading-relaxed">
               {String(selectedNode.details?.summary || selectedNode.details?.description || 'Active WebMCP call')}
             </p>
+
+            {/* Evidence 1: Discovered Tools */}
+            {Boolean(Array.isArray(selectedNode.details?.tools_list)) && (
+              <div className="p-2.5 bg-slate-900/90 rounded border border-slate-800 space-y-1.5 text-xs">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 block">
+                  Discovered In-Browser WebMCP Tools (document.modelContext):
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  {(selectedNode.details?.tools_list as string[]).map((t, i) => (
+                    <span key={i} className="px-2 py-0.5 bg-sky-950/60 border border-sky-800/60 rounded text-[10px] font-mono text-sky-300">
+                      ✓ {t}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Evidence 2: Retrieved Contract Terms */}
+            {Boolean(selectedNode.details?.contract_data && typeof selectedNode.details.contract_data === 'object') && (
+              <div className="p-2.5 bg-slate-900/90 rounded border border-slate-800 space-y-1 text-xs">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 block">
+                  Retrieved System of Record Baseline:
+                </span>
+                <pre className="text-[10px] font-mono text-slate-300 overflow-x-auto p-1.5 bg-slate-950 rounded">
+                  {JSON.stringify(selectedNode.details?.contract_data, null, 2)}
+                </pre>
+              </div>
+            )}
+
+            {/* Evidence 3: Decision Twin Reality Check */}
+            {Boolean(selectedNode.details?.evaluation_result && typeof selectedNode.details.evaluation_result === 'object') && (
+              <div className="p-2.5 bg-slate-900/90 rounded border border-slate-800 space-y-1 text-xs">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 block">
+                  Deterministic Decision Twin Output (Zero Hallucination):
+                </span>
+                <pre className="text-[10px] font-mono text-emerald-300 overflow-x-auto p-1.5 bg-slate-950 rounded">
+                  {JSON.stringify(selectedNode.details?.evaluation_result, null, 2)}
+                </pre>
+              </div>
+            )}
+
+            {/* Evidence 4: Agent Strategic Reasoning */}
+            {Boolean(selectedNode.details?.strategic_reasoning) && (
+              <div className="p-2.5 bg-sky-950/30 rounded border border-sky-800/40 space-y-1 text-xs">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-sky-300 block">
+                  Agent Strategic Deliberation:
+                </span>
+                <p className="text-slate-200 text-xs italic leading-relaxed">
+                  "{String(selectedNode.details?.strategic_reasoning)}"
+                </p>
+                {Boolean(selectedNode.details?.next_best_move) && (
+                  <div className="pt-1 text-[11px] font-semibold text-emerald-400 font-mono">
+                    ★ Formulation: {String(selectedNode.details?.next_best_move)}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Evidence 5: Proposal Payload */}
+            {Boolean(selectedNode.details?.proposal_payload && typeof selectedNode.details.proposal_payload === 'object') && (
+              <div className="p-2.5 bg-slate-900/90 rounded border border-slate-800 space-y-1 text-xs">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 block">
+                  Constructed WebMCP Proposal Payload:
+                </span>
+                <pre className="text-[10px] font-mono text-sky-300 overflow-x-auto p-1.5 bg-slate-950 rounded">
+                  {JSON.stringify(selectedNode.details?.proposal_payload, null, 2)}
+                </pre>
+              </div>
+            )}
+
+            {/* Evidence 6: Human Authority Governance Rule */}
+            {Boolean(selectedNode.details?.governance_rule) && (
+              <div className="p-2.5 bg-amber-950/30 rounded border border-amber-800/40 space-y-1 text-xs">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-amber-300 block">
+                  Human Authority Boundary Rule:
+                </span>
+                <p className="text-slate-200 text-xs leading-relaxed">
+                  {String(selectedNode.details?.governance_rule)}
+                </p>
+              </div>
+            )}
           </div>
         )}
+
+        {/* Live WebMCP Execution Console */}
+        <div className="rounded-lg border border-slate-800 bg-slate-950 p-3.5 space-y-2.5 font-mono text-xs">
+          <div className="flex items-center justify-between pb-2 border-b border-slate-800/80">
+            <div className="flex items-center space-x-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="text-slate-200 font-semibold text-[11px] tracking-wide uppercase">
+                Live WebMCP Protocol Stream
+              </span>
+            </div>
+            <span className="text-[10px] text-slate-500 font-sans">
+              {activityEvents.length} events logged
+            </span>
+          </div>
+
+          <div className="max-h-56 overflow-y-auto space-y-2 pr-1 text-[11px]">
+            {activityEvents.length === 0 ? (
+              <p className="text-slate-500 italic py-2 text-center">No WebMCP activity recorded yet.</p>
+            ) : (
+              activityEvents.map((evt) => (
+                <div
+                  key={evt.id}
+                  className={`p-2.5 rounded border transition-colors ${
+                    evt.status === 'completed'
+                      ? 'bg-emerald-950/20 border-emerald-500/20 text-emerald-200'
+                      : evt.status === 'started'
+                      ? 'bg-sky-950/20 border-sky-500/20 text-sky-200'
+                      : 'bg-rose-950/20 border-rose-500/20 text-rose-200'
+                  }`}
+                >
+                  <div className="flex items-center justify-between text-[10px] text-slate-400 mb-1">
+                    <span className="font-semibold text-slate-300">
+                      {evt.tool_name ? `tool:${evt.tool_name}` : evt.stage}
+                    </span>
+                    <span className="text-slate-500">{evt.occurred_at ? new Date(evt.occurred_at).toLocaleTimeString() : ''}</span>
+                  </div>
+                  <p className="text-slate-200 font-sans text-xs leading-relaxed">{evt.message}</p>
+                  {evt.payload_preview && (
+                    <div className="mt-1.5 p-1.5 bg-slate-900/90 rounded border border-slate-800 text-[10px] text-slate-400 overflow-x-auto truncate">
+                      <code>{evt.payload_preview}</code>
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
       </div>
     );
   }
@@ -1260,6 +1697,13 @@ export const SchemaRenderer: React.FC<SchemaRendererProps> = ({ node, onAction }
         <button className={className} onClick={handleButtonClick} {...props}>
           {(props.text as string) || renderedChildren}
         </button>
+      );
+
+    case 'a':
+      return (
+        <a className={className} href={(props.href as string) || '#'} {...props}>
+          {(props.text as string) || renderedChildren}
+        </a>
       );
 
     default:

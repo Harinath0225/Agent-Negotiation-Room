@@ -41,6 +41,9 @@ export interface ActivityEvent {
   status: EventStatus;
   message: string;
   occurred_at: string;
+  source?: 'webmcp' | 'ui' | 'decision_twin';
+  tool_name?: string;
+  payload_preview?: string;
 }
 
 export interface IntentWeights {
@@ -127,6 +130,7 @@ export interface StagedMutation {
   status: 'none' | 'previewed' | 'published';
   patch?: Record<string, unknown>;
   preview_layout?: unknown;
+  last_guard_error?: string | null;
 }
 
 export const CANONICAL_DAG_NODES: DAGNode[] = [
@@ -134,55 +138,92 @@ export const CANONICAL_DAG_NODES: DAGNode[] = [
     id: 'node-discover',
     label: '1. Discover Tools',
     stage: 'discover',
-    status: 'completed',
+    status: 'idle',
     details: {
-      tool_name: 'FastMCP.list_tools',
-      summary: 'Agent enumerates discoverable WebMCP tools',
-      request_id: 'mcp-init-01',
+      tool_name: 'document.modelContext.registerTool',
+      summary: 'External agent discovers registered in-browser WebMCP tool definitions',
+      request_id: 'webmcp-disc-01',
+      tools_list: [
+        'get_current_deal',
+        'get_constraints',
+        'evaluate_offer',
+        'simulate_tradeoff',
+        'propose_counteroffer',
+        'compile_intent',
+      ],
+      protocol: 'WebMCP (In-Browser Tool Standard)',
     },
   },
   {
     id: 'node-read',
     label: '2. Read Deal State',
     stage: 'read',
-    status: 'completed',
+    status: 'idle',
     details: {
       tool_name: 'get_current_deal & get_constraints',
-      summary: 'Retrieves contract #1042-B terms, targets, and constraints',
-      request_id: 'mcp-read-02',
+      summary: 'Retrieves contract #1042-B baseline state, targets, and non-negotiable boundaries',
+      request_id: 'webmcp-read-02',
+      contract_data: {
+        contract_id: '1042-B',
+        counterparty: 'Apex Global Enterprise',
+        baseline_price: 120000,
+        liability_cap: 2.0,
+        payment_terms: 'Net 30',
+        delivery_timeline_days: 90,
+        hard_limit_liability: 1.5,
+      },
     },
   },
   {
     id: 'node-evaluate',
     label: '3. Evaluate Offer',
     stage: 'evaluate',
-    status: 'completed',
+    status: 'idle',
     details: {
-      tool_name: 'evaluate_offer',
-      summary: 'Decision Twin runs deterministic constraint evaluation',
-      request_id: 'mcp-eval-03',
+      tool_name: 'evaluate_offer (Decision Twin)',
+      summary: 'Deterministic reality check: scores offer and flags hard constraint breaches',
+      request_id: 'twin-eval-03',
+      evaluation_result: {
+        score: 85,
+        is_feasible: true,
+        hard_failures: [],
+        trade_offs: [
+          'Payment terms (Net 30) compensates for $15,000 price discount',
+          'Liability 1.5x satisfies non-negotiable safety threshold',
+        ],
+      },
     },
   },
   {
     id: 'node-reason',
     label: '4. Agent Strategy',
     stage: 'reason',
-    status: 'completed',
+    status: 'idle',
     details: {
-      tool_name: 'AgenticAI.reason',
-      summary: 'Identifies Next Best Negotiation Move balancing price and risk',
-      request_id: 'mcp-reason-04',
+      tool_name: 'AgenticStrategist.reason',
+      summary: 'AI reasons over deterministic twin outputs to identify Next Best Move',
+      request_id: 'agent-reason-04',
+      strategic_reasoning:
+        'Price concession from $120k to $105k maximizes closing probability. Twin confirms 1.5x liability satisfies non-negotiable risk policy. Formulating compliant Counter Proposal A.',
+      next_best_move: 'Counter Proposal A ($105,000, 1.5x liability, Net 30)',
     },
   },
   {
     id: 'node-propose',
     label: '5. Propose Counteroffer',
     stage: 'propose',
-    status: 'completed',
+    status: 'idle',
     details: {
       tool_name: 'propose_counteroffer',
-      summary: 'Submits compliant proposal for $105,000 awaiting human sign-off',
-      request_id: 'mcp-prop-05',
+      summary: 'Submits formal counteroffer payload to Human Approval Boundary',
+      request_id: 'webmcp-prop-05',
+      proposal_payload: {
+        proposed_price: 105000,
+        liability: 1.5,
+        payment_terms: 'Net 30',
+        delivery_timeline: 90,
+        approval_status: 'pending_human_signoff',
+      },
     },
   },
   {
@@ -191,9 +232,10 @@ export const CANONICAL_DAG_NODES: DAGNode[] = [
     stage: 'approve',
     status: 'active',
     details: {
-      tool_name: 'deal_approval',
-      summary: 'Human-in-the-loop final acceptance boundary',
-      request_id: 'mcp-appr-06',
+      tool_name: 'HumanAuthorityBoundary',
+      summary: 'Human-in-the-loop sign-off: Agent has zero autonomous contract execution authority',
+      request_id: 'human-auth-06',
+      governance_rule: 'Non-delegable human signature required for binding contract commitment',
     },
   },
 ];
@@ -205,6 +247,13 @@ export const CANONICAL_DAG_EDGES: DAGEdge[] = [
   { id: 'edge-4-5', source: 'node-reason', target: 'node-propose', label: 'counter proposal' },
   { id: 'edge-5-6', source: 'node-propose', target: 'node-approve', label: 'pending sign-off' },
 ];
+
+const WORKFLOW_STAGE_TO_DAG_NODE: Partial<Record<WorkflowStageId, string>> = {
+  user_agent: 'node-read',
+  webmcp: 'node-evaluate',
+  decision_twin: 'node-reason',
+  deal_room: 'node-propose',
+};
 
 export const INITIAL_ALTERNATIVES: DealAlternative[] = [
   {
@@ -469,8 +518,13 @@ export const useDealRoomStore = create<DealRoomStore>((set) => ({
       simulationError: null,
       workflowStages: state.workflowStages.map((s) => ({
         ...s,
-        state: s.id === 'negotiator' ? 'active' : 'idle',
+        state: (s.id === 'negotiator' ? 'active' : 'idle') as WorkflowStage['state'],
       })),
+        dagNodes: CANONICAL_DAG_NODES.map((node) => ({
+          ...node,
+          status: 'idle' as DAGNode['status'],
+          details: { ...node.details },
+        })),
     })),
 
   completeSimulation: (outcome: SimulationOutcome) =>
@@ -534,7 +588,51 @@ export const useDealRoomStore = create<DealRoomStore>((set) => ({
 
       // Keep at most 50 events, newest first
       const updatedEvents = [newEvent, ...state.activityEvents].slice(0, 50);
-      return { activityEvents: updatedEvents };
+      const dagNodeId = WORKFLOW_STAGE_TO_DAG_NODE[newEvent.stage];
+      const dagStatus =
+        newEvent.status === 'completed'
+          ? 'completed'
+          : newEvent.status === 'failed'
+          ? 'failed'
+          : 'active';
+      const updatedDagNodes = dagNodeId
+        ? state.dagNodes.map((node) =>
+            node.id === dagNodeId
+              ? {
+                  ...node,
+                  status: dagStatus as DAGNode['status'],
+                  details: {
+                    ...node.details,
+                    request_id: newEvent.request_id,
+                    tool_name: newEvent.tool_name || node.details?.tool_name,
+                    summary: newEvent.message,
+                    event: newEvent,
+                  },
+                }
+              : newEvent.status === 'started' && node.status === 'active'
+              ? { ...node, status: 'idle' as DAGNode['status'] }
+              : node
+          )
+        : state.dagNodes;
+      const updatedStages = state.workflowStages.map((stage) =>
+        stage.id === newEvent.stage
+          ? {
+              ...stage,
+              state:
+                (newEvent.status === 'completed'
+                  ? 'completed'
+                  : newEvent.status === 'failed'
+                  ? 'failed'
+                  : 'active') as WorkflowStage['state'],
+            }
+          : stage
+      );
+
+      return {
+        activityEvents: updatedEvents,
+        dagNodes: updatedDagNodes,
+        workflowStages: updatedStages,
+      };
     }),
 
   selectStage: (stageId) => set({ selectedStageId: stageId }),
@@ -626,9 +724,10 @@ export const useDealRoomStore = create<DealRoomStore>((set) => ({
   projectActivityToDAG: () =>
     set((state) => {
       const updatedNodes = state.dagNodes.map((node) => {
-        const relatedEvent = state.activityEvents.find(
-          (e) => e.request_id === node.request_id || e.stage === (node.stage as unknown as WorkflowStageId)
-        );
+        const relatedEvent = state.activityEvents.find((event) => {
+          const dagNodeId = WORKFLOW_STAGE_TO_DAG_NODE[event.stage];
+          return dagNodeId === node.id;
+        });
         return relatedEvent
           ? {
               ...node,

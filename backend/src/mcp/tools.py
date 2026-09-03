@@ -336,6 +336,29 @@ def propose_counteroffer(contract_id: str, proposal_data: str) -> str:
         })
 
 
+def execute_contract(contract_id: str, signature_token: str = None) -> str:
+    """
+    Attempts to execute a binding legal contract.
+    External agents are strictly prohibited from binding execution without human authorization.
+    """
+    request_id = f"mcp-{uuid.uuid4().hex[:8]}"
+    logger.warning(
+        f"[execute_contract] GOVERNANCE BLOCK request_id={request_id} contract_id={contract_id} "
+        f"has_token={bool(signature_token)}"
+    )
+    return json.dumps({
+        "status": "error",
+        "code": "GOVERNANCE_BOUNDARY_BLOCKED",
+        "http_status": 403,
+        "request_id": request_id,
+        "contract_id": contract_id,
+        "verdict": "HUMAN_APPROVAL_ENFORCED",
+        "message": "EXECUTION BLOCKED by Governance Boundary: External autonomous agents are prohibited from binding contract execution without verified human authority sign-off token.",
+        "human_approval_required": True,
+        "boundary_rule": "Non-negotiable authority invariant: Deal sign-off requires human principal signature."
+    })
+
+
 # ============================================================================
 # Phase 6: Presentation Mutation Inspection, Preview, and Publish Tools
 # ============================================================================

@@ -1,0 +1,80 @@
+name: Deploy Nexus Deal Room to Google Cloud Run
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  REGION: ${{ secrets.GCP_REGION || 'us-central1' }}
+  SERVICE_NAME: ${{ secrets.CLOUD_RUN_SERVICE_NAME || 'nexus-deal-room' }}
+  REGISTRY_REPO: ${{ secrets.ARTIFACT_REGISTRY_REPO || 'nexus-deal-room' }}
+
+permissions:
+  contents: read
+  id-token: write # Required for Workload Identity Federation OIDC token exchange
+
+jobs:
+  deploy:
+    name: Build & Deploy via Workload Identity Provider
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # ------------------------------------------------------------------------
+      # 1. Authenticate to GCP via Workload Identity Provider (Zero Long-Lived Keys!)
+      # ------------------------------------------------------------------------
+      - name: Authenticate to Google Cloud via WIF
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+
+      # ------------------------------------------------------------------------
+      # 2. Configure Google Cloud SDK & Docker Authentication
+      # ------------------------------------------------------------------------
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: |
+          gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+      # ------------------------------------------------------------------------
+      # 3. Build & Tag Multi-Stage Docker Container
+      # ------------------------------------------------------------------------
+      - name: Build & Push Container Image
+        env:
+          IMAGE_TAG: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REGISTRY_REPO }}/app:${{ github.sha }}
+          LATEST_TAG: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REGISTRY_REPO }}/app:latest
+        run: |
+          echo "Building Docker container image..."
+          docker build \
+            -t $IMAGE_TAG \
+            -t $LATEST_TAG \
+            .
+          
+          echo "Pushing image to Artifact Registry..."
+          docker push $IMAGE_TAG
+          docker push $LATEST_TAG
+
+      # ------------------------------------------------------------------------
+      # 4. Deploy to Google Cloud Run
+      # ------------------------------------------------------------------------
+      - name: Deploy to Cloud Run
+        id: deploy
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: ${{ env.SERVICE_NAME }}
+          region: ${{ env.REGION }}
+          image: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REGISTRY_REPO }}/app:${{ github.sha }}
+
+      - name: Display Cloud Run Endpoint
+        run: |
+          echo "🚀 Deployment Successful!"
+          echo "Nexus Deal Room is live at: ${{ steps.deploy.outputs.url }}"
