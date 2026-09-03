@@ -7,10 +7,10 @@ on:
   workflow_dispatch:
 
 env:
-  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-  REGION: ${{ secrets.GCP_REGION || 'us-central1' }}
-  SERVICE_NAME: ${{ secrets.CLOUD_RUN_SERVICE_NAME || 'nexus-deal-room' }}
-  REGISTRY_REPO: ${{ secrets.ARTIFACT_REGISTRY_REPO || 'nexus-deal-room' }}
+  PROJECT_ID: avian-augury-411109
+  REGION: us-central1
+  SERVICE_NAME: nexus-deal-room
+  REGISTRY_REPO: nexus-deal-room
 
 permissions:
   contents: read
@@ -32,21 +32,22 @@ jobs:
         id: auth
         uses: google-github-actions/auth@v2
         with:
+          token_format: 'access_token'
           workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
           service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
 
       # ------------------------------------------------------------------------
-      # 2. Configure Google Cloud SDK & Docker Authentication
+      # 2. Authenticate Docker directly to Artifact Registry
       # ------------------------------------------------------------------------
-      - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v2
-
-      - name: Configure Docker for Artifact Registry
-        run: |
-          gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+      - name: Login to Artifact Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGION }}-docker.pkg.dev
+          username: oauth2accesstoken
+          password: ${{ steps.auth.outputs.access_token }}
 
       # ------------------------------------------------------------------------
-      # 3. Build & Tag Multi-Stage Docker Container
+      # 3. Build & Push Multi-Stage Docker Container
       # ------------------------------------------------------------------------
       - name: Build & Push Container Image
         env:
@@ -59,12 +60,12 @@ jobs:
             -t $LATEST_TAG \
             .
           
-          echo "Pushing image to Artifact Registry..."
+          echo "Pushing images to Artifact Registry ($IMAGE_TAG)..."
           docker push $IMAGE_TAG
           docker push $LATEST_TAG
 
       # ------------------------------------------------------------------------
-      # 4. Deploy to Google Cloud Run
+      # 4. Deploy New Revision to Google Cloud Run
       # ------------------------------------------------------------------------
       - name: Deploy to Cloud Run
         id: deploy
