@@ -446,3 +446,206 @@ def publish_ui_mutation(mutation_id: str) -> str:
             "status": "error",
             "message": f"Publish mutation failed: {str(e)}"
         })
+
+
+def create_deal(company: str, value: int, stage: str = "Draft", title: str = None, liability_cap: str = "1.5x") -> str:
+    """
+    Creates a new enterprise deal in the Nexus Deal Room repository.
+    Enables autonomous agents (ChatGPT, Agent QA) to initiate new negotiation workflows.
+    """
+    from datetime import datetime, timezone
+    from ..models.schema import DealRecord
+
+    db = SessionLocal()
+    try:
+        now = datetime.now(timezone.utc).isoformat()
+        contract_num = uuid.uuid4().hex[:4].upper()
+        contract_id = f"{contract_num}-D"
+        deal_title = title or f"{company} Enterprise Service Agreement"
+
+        record = DealRecord(
+            id=f"deal_{uuid.uuid4().hex[:8]}",
+            contract_id=contract_id,
+            title=deal_title,
+            counterparty=company,
+            status=stage,
+            annual_value=int(value),
+            liability_cap=liability_cap or "1.5x",
+            notes=[{
+                "id": f"note_{uuid.uuid4().hex[:6]}",
+                "author": "WebMCP Agent",
+                "note": f"Deal created via WebMCP tool with stage '{stage}' and value ${value:,}.",
+                "timestamp": now,
+            }],
+            updated_at=now,
+        )
+        db.add(record)
+        db.commit()
+        db.refresh(record)
+
+        return json.dumps({
+            "status": "success",
+            "message": f"Deal '{record.title}' created with ID #{record.contract_id}.",
+            "deal": {
+                "id": record.id,
+                "contract_id": record.contract_id,
+                "title": record.title,
+                "counterparty": record.counterparty,
+                "status": record.status,
+                "annual_value": record.annual_value,
+                "liability_cap": record.liability_cap,
+            }
+        })
+    except Exception as e:
+        logger.error(f"[create_deal] Error: {str(e)}")
+        return json.dumps({"status": "error", "message": f"Failed to create deal: {str(e)}"})
+    finally:
+        db.close()
+
+
+def get_deals(query: str = None, status: str = None, min_value: int = None, max_value: int = None) -> str:
+    """
+    Retrieves and filters deals across the pipeline.
+    """
+    from sqlalchemy import or_
+    from ..models.schema import DealRecord
+
+    db = SessionLocal()
+    try:
+        records = db.query(DealRecord)
+        if query:
+            escaped = f"%{query.strip()}%"
+            records = records.filter(
+                or_(
+                    DealRecord.contract_id.ilike(escaped),
+                    DealRecord.title.ilike(escaped),
+                    DealRecord.counterparty.ilike(escaped),
+                )
+            )
+        if status:
+            records = records.filter(DealRecord.status.ilike(status))
+        if min_value is not None:
+            records = records.filter(DealRecord.annual_value >= min_value)
+        if max_value is not None:
+            records = records.filter(DealRecord.annual_value <= max_value)
+
+        matches = records.order_by(DealRecord.updated_at.desc()).all()
+        return json.dumps({
+            "status": "success",
+            "count": len(matches),
+            "deals": [
+                {
+                    "contract_id": r.contract_id,
+                    "title": r.title,
+                    "counterparty": r.counterparty,
+                    "status": r.status,
+                    "annual_value": r.annual_value,
+                    "liability_cap": r.liability_cap,
+                    "notes_count": len(r.notes or []),
+                }
+                for r in matches
+            ]
+        })
+    except Exception as e:
+        logger.error(f"[get_deals] Error: {str(e)}")
+        return json.dumps({"status": "error", "message": f"Failed to list deals: {str(e)}"})
+    finally:
+        db.close()
+
+
+def move_deal_stage(contract_id: str, stage: str) -> str:
+    """
+    Transitions a deal stage (e.g. Draft -> Negotiation -> Approved -> Closed Won).
+    """
+    from datetime import datetime, timezone
+    from sqlalchemy import or_
+    from ..models.schema import DealRecord
+
+    db = SessionLocal()
+    try:
+        clean_id = contract_id.strip().lstrip("#")
+        deal = db.query(DealRecord).filter(
+            or_(
+                DealRecord.contract_id == clean_id,
+                DealRecord.contract_id == contract_id,
+                DealRecord.id == contract_id
+            )
+        ).first()
+
+        if not deal:
+            return json.dumps({"status": "error", "message": f"Contract #{contract_id} not found."})
+
+        old_stage = deal.status
+        now = datetime.now(timezone.utc).isoformat()
+        deal.status = stage
+        deal.updated_at = now
+        notes = list(deal.notes or [])
+        notes.append({
+            "id": f"note_{uuid.uuid4().hex[:6]}",
+            "author": "WebMCP Workflow",
+            "note": f"Stage updated from '{old_stage}' to '{stage}'.",
+            "timestamp": now,
+        })
+        deal.notes = notes
+        db.commit()
+
+        return json.dumps({
+            "status": "success",
+            "contract_id": deal.contract_id,
+            "old_stage": old_stage,
+            "new_stage": deal.status,
+            "message": f"Deal #{deal.contract_id} successfully moved to stage '{deal.status}'."
+        })
+    except Exception as e:
+        logger.error(f"[move_deal_stage] Error: {str(e)}")
+        return json.dumps({"status": "error", "message": f"Failed to move deal stage: {str(e)}"})
+    finally:
+        db.close()
+
+
+def add_deal_note(contract_id: str, note: str, author: str = "WebMCP Agent") -> str:
+    """
+    Appends a negotiation insight or context note to a contract record.
+    """
+    from datetime import datetime, timezone
+    from sqlalchemy import or_
+    from ..models.schema import DealRecord
+
+    db = SessionLocal()
+    try:
+        clean_id = contract_id.strip().lstrip("#")
+        deal = db.query(DealRecord).filter(
+            or_(
+                DealRecord.contract_id == clean_id,
+                DealRecord.contract_id == contract_id,
+                DealRecord.id == contract_id
+            )
+        ).first()
+
+        if not deal:
+            return json.dumps({"status": "error", "message": f"Contract #{contract_id} not found."})
+
+        now = datetime.now(timezone.utc).isoformat()
+        notes = list(deal.notes or [])
+        note_entry = {
+            "id": f"note_{uuid.uuid4().hex[:6]}",
+            "author": author or "ChatGPT Agent",
+            "note": note,
+            "timestamp": now,
+        }
+        notes.append(note_entry)
+        deal.notes = notes
+        deal.updated_at = now
+        db.commit()
+
+        return json.dumps({
+            "status": "success",
+            "contract_id": deal.contract_id,
+            "note": note_entry,
+            "total_notes": len(notes),
+        })
+    except Exception as e:
+        logger.error(f"[add_deal_note] Error: {str(e)}")
+        return json.dumps({"status": "error", "message": f"Failed to add note: {str(e)}"})
+    finally:
+        db.close()

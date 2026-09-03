@@ -72,6 +72,151 @@ def _build_handlers() -> Dict[str, Callable[[Dict[str, Any]], str]]:
         "publish_ui_mutation": lambda args: mcp_tools.publish_ui_mutation(
             mutation_id=str(args["mutation_id"]),
         ),
+        "create_deal": lambda args: mcp_tools.create_deal(
+            company=str(args["company"]),
+            value=int(args["value"]),
+            stage=str(args.get("stage", "Draft")),
+            title=args.get("title"),
+            liability_cap=args.get("liability_cap", "1.5x"),
+        ),
+        "get_deals": lambda args: mcp_tools.get_deals(
+            query=args.get("query"),
+            status=args.get("status"),
+            min_value=args.get("min_value"),
+            max_value=args.get("max_value"),
+        ),
+        "move_deal_stage": lambda args: mcp_tools.move_deal_stage(
+            contract_id=str(args["contract_id"]),
+            stage=str(args["stage"]),
+        ),
+        "add_deal_note": lambda args: mcp_tools.add_deal_note(
+            contract_id=str(args["contract_id"]),
+            note=str(args["note"]),
+            author=args.get("author", "WebMCP Agent"),
+        ),
+    }
+
+
+@router.get("/manifest.json")
+def get_manifest():
+    """Returns machine-readable WebMCP tool catalog for AI agents (ChatGPT, etc.)."""
+    return {
+        "protocol": "WebMCP",
+        "version": "1.0.0",
+        "name": "Nexus Deal Room WebMCP Server",
+        "description": "Agent-native decision environment with deterministic Decision Twin and WebMCP tool interface.",
+        "discovery": {
+            "browser_context": "window.document.modelContext",
+            "json_rpc_endpoint": "/api/mcp/tool-call",
+            "rest_endpoint": "/api/contracts"
+        },
+        "tools": [
+            {
+                "name": "create_deal",
+                "title": "Create Deal",
+                "description": "Create a new enterprise deal in the Nexus Deal Room.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "company": {"type": "string", "description": "Counterparty company name"},
+                        "value": {"type": "number", "description": "Annual contract value in USD"},
+                        "stage": {"type": "string", "description": "Deal stage: Draft, Negotiation, Approved, Closed Won"}
+                    },
+                    "required": ["company", "value"],
+                    "additionalProperties": False
+                }
+            },
+            {
+                "name": "get_deals",
+                "title": "Get Deals",
+                "description": "Search and list deals across the pipeline.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "query": {"type": "string", "description": "Search keyword"},
+                        "status": {"type": "string", "description": "Filter by status"}
+                    }
+                }
+            },
+            {
+                "name": "move_deal_stage",
+                "title": "Move Deal Stage",
+                "description": "Transition a deal to a new stage (e.g. Negotiation, Closed Won).",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "contract_id": {"type": "string", "description": "Contract ID (e.g. #1042-B)"},
+                        "stage": {"type": "string", "description": "Target stage"}
+                    },
+                    "required": ["contract_id", "stage"]
+                }
+            },
+            {
+                "name": "add_deal_note",
+                "title": "Add Deal Note",
+                "description": "Append a negotiation or context note to a contract record.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "contract_id": {"type": "string", "description": "Contract ID"},
+                        "note": {"type": "string", "description": "Note content"},
+                        "author": {"type": "string", "description": "Author name"}
+                    },
+                    "required": ["contract_id", "note"]
+                }
+            },
+            {
+                "name": "get_current_deal",
+                "title": "Get Current Deal",
+                "description": "Retrieve active deal state, current price, and negotiated terms.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "contract_id": {"type": "string", "description": "Contract identifier"}
+                    },
+                    "required": ["contract_id"]
+                }
+            },
+            {
+                "name": "evaluate_offer",
+                "title": "Evaluate Offer",
+                "description": "Runs deterministic mathematical evaluation through the Decision Twin.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "contract_id": {"type": "string"},
+                        "offer_data": {"type": "object"}
+                    },
+                    "required": ["contract_id", "offer_data"]
+                }
+            },
+            {
+                "name": "simulate_tradeoff",
+                "title": "Simulate Tradeoff",
+                "description": "Simulates price/liability elasticity trade-offs.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "contract_id": {"type": "string"},
+                        "proposed_change": {"type": "object"}
+                    },
+                    "required": ["contract_id", "proposed_change"]
+                }
+            },
+            {
+                "name": "execute_contract",
+                "title": "Execute Contract",
+                "description": "Attempts to sign and execute a finalized contract. Strictly requires human approval cryptographic token.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "contract_id": {"type": "string"},
+                        "signature_token": {"type": "string"}
+                    },
+                    "required": ["contract_id"]
+                }
+            }
+        ]
     }
 
 

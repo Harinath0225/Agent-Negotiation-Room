@@ -5,6 +5,20 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Schema-driven autonomous negotiation deal room powered by Microsoft Agentic AI and WebMCP." />
+    <!-- WebMCP Protocol & AI Agent Discovery (ChatGPT / Claude / Browser Agent) -->
+    <meta name="model-context-protocol" content="enabled" />
+    <meta name="webmcp-enabled" content="true" />
+    <meta name="webmcp-discovery" content="/.well-known/webmcp.json" />
+    <link rel="model-context" type="application/json" href="/.well-known/webmcp.json" />
+    <link rel="mcp-manifest" type="application/json" href="/api/mcp/manifest.json" />
+    <script id="webmcp-manifest" type="application/json">
+      {
+        "@context": "https://modelcontextprotocol.io/spec",
+        "protocol": "WebMCP",
+        "endpoint": "/.well-known/webmcp.json",
+        "jsContext": "document.modelContext"
+      }
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />

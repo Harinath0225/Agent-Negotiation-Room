@@ -22,3 +22,4 @@ class DealRecord(Base):
     annual_value = Column(Integer, nullable=False)
     liability_cap = Column(String, nullable=False)
     updated_at = Column(String, nullable=False)
+    notes = Column(JSON, default=list, nullable=True)

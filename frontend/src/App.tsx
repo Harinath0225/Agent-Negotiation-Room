@@ -13,16 +13,26 @@ import AgentQAPage from './AgentQAPage';
 
 interface ModelContextTool {
   name: string;
+  title?: string;
   description: string;
   inputSchema: Record<string, unknown>;
   execute: (input: Record<string, unknown>) => Promise<unknown>;
 }
 
+interface ModelContextObject {
+  tools: Record<string, ModelContextTool>;
+  registerTool: (tool: ModelContextTool) => void;
+  getTools: () => ModelContextTool[];
+  executeTool: (name: string, input?: Record<string, unknown>) => Promise<unknown>;
+}
+
 declare global {
   interface Document {
-    modelContext?: {
-      registerTool: (tool: ModelContextTool) => void;
-    };
+    modelContext?: ModelContextObject;
+  }
+  interface Window {
+    modelContext?: ModelContextObject;
+    webmcp?: ModelContextObject;
   }
 }
 
@@ -485,20 +495,172 @@ function App() {
   // In-Browser WebMCP Registration (for ChatGPT In-App Browser, Chrome DevTools & Autonomous Agents)
   useEffect(() => {
     const registerBrowserTools = () => {
-      // Ensure document.modelContext object exists in browser window
-      const modelContext = (document as unknown as { modelContext?: Record<string, unknown> }).modelContext || {
-        tools: {} as Record<string, unknown>,
-        registerTool(toolDef: { name: string; description: string; inputSchema: unknown; execute: (args: Record<string, unknown>) => Promise<unknown> }) {
-          (this.tools as Record<string, unknown>)[toolDef.name] = toolDef;
+      // Create unified ModelContext object adhering to WebMCP standard
+      const existing = (document as unknown as { modelContext?: ModelContextObject }).modelContext;
+      const modelContext: ModelContextObject = existing || {
+        tools: {},
+        registerTool(toolDef: ModelContextTool) {
+          this.tools[toolDef.name] = toolDef;
+        },
+        getTools() {
+          return Object.values(this.tools);
+        },
+        async executeTool(name: string, input: Record<string, unknown> = {}) {
+          const tool = this.tools[name];
+          if (!tool) {
+            throw new Error(`WebMCP Tool "${name}" not found. Available tools: ${Object.keys(this.tools).join(', ')}`);
+          }
+          return await tool.execute(input);
         },
       };
-      (document as unknown as { modelContext: typeof modelContext }).modelContext = modelContext;
 
-      const reg = modelContext.registerTool as (t: Record<string, unknown>) => void;
+      // Ensure helper methods exist if re-using existing object
+      if (!modelContext.getTools) {
+        modelContext.getTools = function () {
+          return Object.values(this.tools);
+        };
+      }
+      if (!modelContext.executeTool) {
+        modelContext.executeTool = async function (name: string, input: Record<string, unknown> = {}) {
+          const tool = this.tools[name];
+          if (!tool) {
+            throw new Error(`WebMCP Tool "${name}" not found. Available tools: ${Object.keys(this.tools).join(', ')}`);
+          }
+          return await tool.execute(input);
+        };
+      }
+
+      // Expose globally on document, window, and window.webmcp
+      document.modelContext = modelContext;
+      window.modelContext = modelContext;
+      (window as unknown as { webmcp: ModelContextObject }).webmcp = modelContext;
+
+      const reg = modelContext.registerTool.bind(modelContext);
 
       try {
-        reg.call(modelContext, {
+        // --- 1. Pipeline Lifecycle Tools (as requested by ChatGPT / Agent QA) ---
+        reg({
+          name: 'create_deal',
+          title: 'Create Deal',
+          description: 'Create a new enterprise deal in the Nexus Deal Room repository.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              company: { type: 'string', description: 'Counterparty company name (e.g. Acme Corp)' },
+              value: { type: 'number', description: 'Annual contract value in USD (e.g. 2000000)' },
+              stage: { type: 'string', description: 'Deal stage: Draft, Negotiation, Approved, Closed Won' },
+            },
+            required: ['company', 'value'],
+            additionalProperties: false,
+          },
+          execute: async (input: Record<string, unknown>) => {
+            const res = await fetch('/api/contracts', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(input),
+            });
+            const data = await res.json();
+            addActivityEvent({
+              request_id: `deal-create-${Date.now()}`,
+              stage: 'deal_room',
+              status: 'completed',
+              message: `WebMCP created deal #${data?.deal?.contract_id || 'new'} for ${input.company} ($${Number(input.value).toLocaleString()}).`,
+              source: 'webmcp',
+              tool_name: 'create_deal',
+            });
+            return data;
+          },
+        });
+
+        reg({
+          name: 'get_deals',
+          title: 'Get Deals',
+          description: 'Retrieve and search deals across the entire pipeline repository.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              query: { type: 'string', description: 'Search term' },
+              status: { type: 'string', description: 'Filter by stage' },
+            },
+          },
+          execute: async (input: Record<string, unknown>) => {
+            const params = new URLSearchParams();
+            if (input?.query) params.set('query', String(input.query));
+            if (input?.status) params.set('status', String(input.status));
+            const res = await fetch(`/api/contracts?${params.toString()}`);
+            return await res.json();
+          },
+        });
+
+        reg({
+          name: 'get_deal',
+          title: 'Get Deal',
+          description: 'Retrieve detailed record and notes for a specific contract ID.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              contract_id: { type: 'string', description: 'Contract ID (e.g. #1042-B)' },
+            },
+            required: ['contract_id'],
+          },
+          execute: async (input: Record<string, unknown>) => {
+            const cid = encodeURIComponent(String(input.contract_id || '1042-B'));
+            const res = await fetch(`/api/contracts/${cid}`);
+            return await res.json();
+          },
+        });
+
+        reg({
+          name: 'move_deal_stage',
+          title: 'Move Deal Stage',
+          description: 'Transition a deal stage (e.g. Draft -> Negotiation -> Approved -> Closed Won).',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              contract_id: { type: 'string', description: 'Contract ID' },
+              stage: { type: 'string', description: 'Target stage' },
+            },
+            required: ['contract_id', 'stage'],
+          },
+          execute: async (input: Record<string, unknown>) => {
+            const cid = encodeURIComponent(String(input.contract_id || '1042-B'));
+            const res = await fetch(`/api/contracts/${cid}/stage`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ stage: input.stage }),
+            });
+            return await res.json();
+          },
+        });
+
+        reg({
+          name: 'add_deal_note',
+          title: 'Add Deal Note',
+          description: 'Append an analytical or context note to a contract record.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              contract_id: { type: 'string', description: 'Contract ID' },
+              note: { type: 'string', description: 'Note content' },
+              author: { type: 'string', description: 'Author' },
+            },
+            required: ['contract_id', 'note'],
+          },
+          execute: async (input: Record<string, unknown>) => {
+            const cid = encodeURIComponent(String(input.contract_id || '1042-B'));
+            const res = await fetch(`/api/contracts/${cid}/notes`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ note: input.note, author: input.author || 'ChatGPT Agent' }),
+            });
+            return await res.json();
+          },
+        });
+
+        // --- 2. Real-Time Deal Room & Decision Twin Tools ---
+        reg({
           name: 'get_current_deal',
+          title: 'Get Current Deal',
           description: 'Retrieve current negotiation state, baseline price, and counterparty terms.',
           inputSchema: {
             type: 'object',
@@ -510,8 +672,9 @@ function App() {
           },
         });
 
-        reg.call(modelContext, {
+        reg({
           name: 'get_constraints',
+          title: 'Get Constraints',
           description: 'Retrieve non-negotiable hard limits and advisory trade-off rules for contract.',
           inputSchema: {
             type: 'object',
@@ -523,8 +686,9 @@ function App() {
           },
         });
 
-        reg.call(modelContext, {
+        reg({
           name: 'evaluate_offer',
+          title: 'Evaluate Offer',
           description: 'Runs deterministic Decision Twin evaluation on proposed terms. Returns score and hard constraint violations.',
           inputSchema: {
             type: 'object',
@@ -541,8 +705,9 @@ function App() {
           },
         });
 
-        reg.call(modelContext, {
+        reg({
           name: 'simulate_tradeoff',
+          title: 'Simulate Tradeoff',
           description: 'Runs a tradeoff simulation against contract terms using the Decision Twin.',
           inputSchema: {
             type: 'object',
@@ -561,8 +726,9 @@ function App() {
           },
         });
 
-        reg.call(modelContext, {
+        reg({
           name: 'propose_counteroffer',
+          title: 'Propose Counteroffer',
           description: 'Submits a formal counteroffer to the Human Approval Boundary.',
           inputSchema: {
             type: 'object',
@@ -579,8 +745,9 @@ function App() {
           },
         });
 
-        reg.call(modelContext, {
+        reg({
           name: 'execute_contract',
+          title: 'Execute Contract',
           description: 'Attempts autonomous binding execution of contract terms. Strictly guarded by human sign-off.',
           inputSchema: {
             type: 'object',
@@ -596,8 +763,9 @@ function App() {
           },
         });
 
-        reg.call(modelContext, {
+        reg({
           name: 'compile_intent',
+          title: 'Compile Intent',
           description: 'Translates natural language human intent into mathematical weights for Decision Twin.',
           inputSchema: {
             type: 'object',
@@ -611,8 +779,9 @@ function App() {
           },
         });
 
-        reg.call(modelContext, {
+        reg({
           name: 'mutate_ui_schema',
+          title: 'Mutate UI Schema',
           description: 'Mutate website layout and Tailwind CSS styling dynamically in real-time (presentation only).',
           inputSchema: {
             type: 'object',
@@ -634,7 +803,7 @@ function App() {
     };
 
     registerBrowserTools();
-  }, [refreshSchema, submitSimulation, invokeMCPTool, compileIntentFromText]);
+  }, [refreshSchema, submitSimulation, invokeMCPTool, compileIntentFromText, addActivityEvent]);
 
   if (loading) {
     return (

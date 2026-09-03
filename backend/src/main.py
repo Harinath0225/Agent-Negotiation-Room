@@ -112,6 +112,12 @@ async def health_check():
     return {"status": "ok"}
 
 
+@app.get("/.well-known/webmcp.json")
+async def webmcp_well_known():
+    from .api.mcp_proxy_routes import get_manifest
+    return get_manifest()
+
+
 # Serve production frontend if built and present (for Cloud Run container)
 from fastapi import HTTPException
 from fastapi.responses import FileResponse
